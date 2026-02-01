@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 
 // Mock Tauri APIs for testing
 vi.mock('@tauri-apps/api/core', () => ({
