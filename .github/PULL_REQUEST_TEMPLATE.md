@@ -1,3 +1,24 @@
+<!--
+PR Title Format: Use a prefix to categorize your PR
+
+  feat:     New feature or functionality
+  fix:      Bug fix
+  docs:     Documentation only changes
+  style:    Code style (formatting, no logic change)
+  refactor: Code refactor (no new feature or bug fix)
+  perf:     Performance improvement
+  test:     Adding or updating tests
+  build:    Build system or dependencies
+  ci:       CI/CD configuration
+  chore:    Maintenance tasks, tooling, etc.
+
+Examples:
+  feat: add batch CSV import
+  fix: resolve QR validation timeout
+  docs: update release process
+  chore: update dependencies
+-->
+
 ## Summary
 
 <!-- Brief description of what this PR does -->
