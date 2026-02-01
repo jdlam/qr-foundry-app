@@ -73,6 +73,22 @@ body {
   background: var(--border-light);
 }
 
+/* Clickable elements */
+button,
+[role="button"],
+[type="button"],
+[type="submit"],
+[type="reset"],
+a,
+label[for],
+select,
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"],
+[tabindex]:not([tabindex="-1"]) {
+  cursor: pointer;
+}
+
 /* Focus styles */
 *:focus-visible {
   outline: 2px solid var(--accent);
