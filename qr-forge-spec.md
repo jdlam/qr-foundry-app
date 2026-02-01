@@ -637,28 +637,31 @@ Since it's a paid download with no free tier:
 
 ## 5. Development Phases
 
-### Phase 1: Core MVP (2-3 weeks)
-- [ ] Tauri project scaffold with React + TypeScript
-- [ ] Basic QR generation (URL, text, WiFi, phone)
-- [ ] Live preview canvas
-- [ ] PNG export with native save dialog
-- [ ] Clipboard copy
-- [ ] Clean, native-feeling UI
+### Phase 1: Core MVP (2-3 weeks) ✅ COMPLETE
+- [x] Tauri project scaffold with React + TypeScript
+- [x] Basic QR generation (URL, text, WiFi, phone)
+- [x] Live preview canvas
+- [x] PNG export with native save dialog
+- [x] Clipboard copy
+- [x] Clean, native-feeling UI
 
-### Phase 2: Customization & Export (2-3 weeks)
-- [ ] Style customization (colors, dots, eyes)
-- [ ] Logo embedding with drag-drop
-- [ ] Gradient fills
-- [ ] SVG/PDF export via Rust backend
-- [ ] Error correction manual control
-- [ ] Transparent backgrounds
+### Phase 2: Customization & Export (2-3 weeks) ✅ COMPLETE
+- [x] Style customization (colors, dots, eyes)
+- [x] Logo embedding with drag-drop
+- [x] Gradient fills
+- [x] SVG export via Rust backend
+- [ ] PDF export via Rust backend (not implemented)
+- [ ] EPS export via Rust backend (not implemented)
+- [x] Error correction manual control
+- [x] Transparent backgrounds
 
-### Phase 3: Power Features (2 weeks)
-- [ ] vCard, email, SMS, geo, calendar inputs
-- [ ] Batch generation from CSV
-- [ ] History (SQLite)
-- [ ] Templates (save/load styles)
-- [ ] QR scanner/decoder
+### Phase 3: Power Features (2 weeks) ✅ COMPLETE
+- [x] vCard, email, SMS, geo, calendar inputs
+- [x] Batch generation from CSV
+- [x] History (SQLite)
+- [x] Templates (save/load styles)
+- [x] QR scanner/decoder
+- [x] QR validation (scan and verify content matches)
 
 ### Phase 4: Distribution (1-2 weeks)
 - [ ] Web asset pack generator
