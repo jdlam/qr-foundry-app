@@ -152,3 +152,110 @@ pub async fn pick_image_file(app: tauri::AppHandle) -> Result<Option<String>, St
         None => Ok(None),
     }
 }
+
+/// Strip data URL prefix from base64 string
+pub fn strip_data_url_prefix(data: &str) -> &str {
+    if data.contains(',') {
+        data.split(',').nth(1).unwrap_or(data)
+    } else {
+        data
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_data_url_prefix_png() {
+        let input = "data:image/png;base64,iVBORw0KGgo=";
+        let result = strip_data_url_prefix(input);
+        assert_eq!(result, "iVBORw0KGgo=");
+    }
+
+    #[test]
+    fn test_strip_data_url_prefix_jpeg() {
+        let input = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
+        let result = strip_data_url_prefix(input);
+        assert_eq!(result, "/9j/4AAQSkZJRg==");
+    }
+
+    #[test]
+    fn test_strip_data_url_prefix_svg() {
+        let input = "data:image/svg+xml;base64,PHN2Zz4=";
+        let result = strip_data_url_prefix(input);
+        assert_eq!(result, "PHN2Zz4=");
+    }
+
+    #[test]
+    fn test_strip_data_url_prefix_no_prefix() {
+        let input = "iVBORw0KGgo=";
+        let result = strip_data_url_prefix(input);
+        assert_eq!(result, "iVBORw0KGgo=");
+    }
+
+    #[test]
+    fn test_strip_data_url_prefix_empty() {
+        let input = "";
+        let result = strip_data_url_prefix(input);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_strip_data_url_prefix_only_comma() {
+        let input = ",abc123";
+        let result = strip_data_url_prefix(input);
+        assert_eq!(result, "abc123");
+    }
+
+    #[test]
+    fn test_strip_data_url_prefix_multiple_commas() {
+        // Edge case: base64 content doesn't have commas normally, but test robustness
+        let input = "data:image/png;base64,abc,def";
+        let result = strip_data_url_prefix(input);
+        assert_eq!(result, "abc");
+    }
+
+    #[test]
+    fn test_export_result_success() {
+        let result = ExportResult {
+            success: true,
+            path: Some("/path/to/file.png".to_string()),
+            error: None,
+        };
+
+        assert!(result.success);
+        assert_eq!(result.path, Some("/path/to/file.png".to_string()));
+        assert!(result.error.is_none());
+    }
+
+    #[test]
+    fn test_export_result_failure() {
+        let result = ExportResult {
+            success: false,
+            path: None,
+            error: Some("Save cancelled by user".to_string()),
+        };
+
+        assert!(!result.success);
+        assert!(result.path.is_none());
+        assert_eq!(result.error, Some("Save cancelled by user".to_string()));
+    }
+
+    #[test]
+    fn test_base64_decode() {
+        // Test that the base64 engine we use can decode properly
+        let original = b"Hello, World!";
+        let encoded = STANDARD.encode(original);
+        let decoded = STANDARD.decode(&encoded).unwrap();
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn test_base64_decode_after_strip() {
+        let data_url = "data:image/png;base64,SGVsbG8sIFdvcmxkIQ==";
+        let base64_only = strip_data_url_prefix(data_url);
+        let decoded = STANDARD.decode(base64_only).unwrap();
+        assert_eq!(decoded, b"Hello, World!");
+    }
+}

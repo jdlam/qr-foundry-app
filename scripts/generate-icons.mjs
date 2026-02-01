@@ -8,7 +8,7 @@ const rootDir = join(__dirname, '..');
 const iconsDir = join(rootDir, 'src-tauri', 'icons');
 const publicDir = join(rootDir, 'public');
 
-const svgPath = join(iconsDir, 'qr-forge-logo.svg');
+const svgPath = join(iconsDir, 'qr-foundry-logo.svg');
 const svgBuffer = readFileSync(svgPath);
 
 // Icon sizes needed for Tauri
@@ -142,8 +142,8 @@ async function main() {
 
   // Copy SVG to public folder for web favicon
   const svgContent = readFileSync(svgPath, 'utf-8');
-  writeFileSync(join(publicDir, 'qr-forge.svg'), svgContent);
-  console.log(`Copied SVG to: ${join(publicDir, 'qr-forge.svg')}`);
+  writeFileSync(join(publicDir, 'qr-foundry.svg'), svgContent);
+  console.log(`Copied SVG to: ${join(publicDir, 'qr-foundry.svg')}`);
 
   // Generate a 32x32 PNG favicon for public
   await generatePng(join(publicDir, 'favicon.png'), 32);

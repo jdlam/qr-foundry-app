@@ -1,8 +1,8 @@
-# QR Forge
+# QR Foundry
 
 A powerful desktop QR code generator with live preview, customization, and batch generation. Built with Tauri, React, and TypeScript.
 
-![QR Forge](https://img.shields.io/badge/version-0.1.0-blue)
+![QR Foundry](https://img.shields.io/badge/version-0.1.0-blue)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -32,8 +32,8 @@ A powerful desktop QR code generator with live preview, customization, and batch
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/qr-forge.git
-cd qr-forge
+git clone https://github.com/yourusername/qr-foundry.git
+cd qr-foundry
 
 # Install dependencies
 npm install
@@ -84,7 +84,7 @@ The built application will be in `src-tauri/target/release/bundle/`.
 ## Project Structure
 
 ```
-qr-forge/
+qr-foundry/
 ├── src/                    # React frontend
 │   ├── components/         # UI components
 │   ├── hooks/              # Custom React hooks

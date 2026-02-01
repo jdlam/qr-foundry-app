@@ -12,12 +12,12 @@ pub use templates::*;
 pub fn get_db_path() -> PathBuf {
     let data_dir = dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("com.jonathanlam.qr-forge");
+        .join("com.jonathanlam.qr-foundry");
 
     // Create directory if it doesn't exist
     std::fs::create_dir_all(&data_dir).ok();
 
-    data_dir.join("qr-forge.db")
+    data_dir.join("qr-foundry.db")
 }
 
 /// Database state managed by Tauri

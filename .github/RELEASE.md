@@ -1,6 +1,6 @@
 # Release Management
 
-This document outlines the release process for QR Forge, separating development workflow from store releases.
+This document outlines the release process for QR Foundry, separating development workflow from store releases.
 
 ## Branching Strategy
 
@@ -98,7 +98,7 @@ npm run tauri build
 ### 8. Create GitHub Release
 ```bash
 gh release create vX.Y.Z \
-  --title "QR Forge vX.Y.Z" \
+  --title "QR Foundry vX.Y.Z" \
   --notes-file CHANGELOG.md \
   ./src-tauri/target/release/bundle/dmg/*.dmg
 ```

@@ -1,7 +1,7 @@
-# QR Forge — Product Specification
+# QR Foundry — Product Specification
 
 ## App Name Ideas
-- **QR Forge** (craftsmanship connotation, memorable)
+- **QR Foundry** (craftsmanship connotation, memorable)
 - QR Mint
 - QR Press
 - Codestamp
@@ -75,7 +75,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  QR Forge                                          [_] [□] [×]     │
+│  QR Foundry                                          [_] [□] [×]     │
 ├──────────────────────┬──────────────────────────────────────────────┤
 │                      │                                              │
 │  INPUT               │            LIVE PREVIEW                      │
@@ -212,7 +212,7 @@
 
 ```
 ┌─────────────────────────────────────────────┐
-│                  QR Forge                    │
+│                  QR Foundry                    │
 ├─────────────────────────────────────────────┤
 │                                             │
 │  ┌─────────────────────────────────────┐    │
@@ -266,7 +266,7 @@
 ### 3.2 Project Structure
 
 ```
-qr-forge/
+qr-foundry/
 ├── src-tauri/                   # Rust backend
 │   ├── src/
 │   │   ├── main.rs              # Tauri entry point

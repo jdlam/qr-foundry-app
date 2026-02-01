@@ -359,3 +359,165 @@ fn sanitize_filename(s: &str) -> String {
         .take(50)
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_qr_type_wifi() {
+        assert_eq!(detect_qr_type("WIFI:T:WPA;S:Network;;"), "wifi");
+        assert_eq!(detect_qr_type("wifi:T:WEP;S:test;;"), "wifi");
+    }
+
+    #[test]
+    fn test_detect_qr_type_vcard() {
+        assert_eq!(detect_qr_type("BEGIN:VCARD\nVERSION:3.0"), "vcard");
+        assert_eq!(detect_qr_type("begin:vcard"), "vcard");
+    }
+
+    #[test]
+    fn test_detect_qr_type_email() {
+        assert_eq!(detect_qr_type("mailto:test@example.com"), "email");
+        assert_eq!(detect_qr_type("MAILTO:test@example.com?subject=Hi"), "email");
+    }
+
+    #[test]
+    fn test_detect_qr_type_sms() {
+        assert_eq!(detect_qr_type("sms:+15551234567"), "sms");
+        assert_eq!(detect_qr_type("smsto:+15551234567"), "sms");
+        assert_eq!(detect_qr_type("SMS:+15551234567?body=Hello"), "sms");
+    }
+
+    #[test]
+    fn test_detect_qr_type_phone() {
+        assert_eq!(detect_qr_type("tel:+15551234567"), "phone");
+        assert_eq!(detect_qr_type("TEL:5551234567"), "phone");
+    }
+
+    #[test]
+    fn test_detect_qr_type_geo() {
+        assert_eq!(detect_qr_type("geo:37.7749,-122.4194"), "geo");
+        assert_eq!(detect_qr_type("GEO:0,0"), "geo");
+    }
+
+    #[test]
+    fn test_detect_qr_type_calendar() {
+        assert_eq!(detect_qr_type("BEGIN:VEVENT\nSUMMARY:Meeting"), "calendar");
+    }
+
+    #[test]
+    fn test_detect_qr_type_url() {
+        assert_eq!(detect_qr_type("https://example.com"), "url");
+        assert_eq!(detect_qr_type("http://example.com/path"), "url");
+        assert_eq!(detect_qr_type("HTTP://EXAMPLE.COM"), "url");
+    }
+
+    #[test]
+    fn test_detect_qr_type_text() {
+        assert_eq!(detect_qr_type("Hello, World!"), "text");
+        assert_eq!(detect_qr_type("Just some text"), "text");
+        assert_eq!(detect_qr_type("12345"), "text");
+    }
+
+    #[test]
+    fn test_sanitize_filename_basic() {
+        assert_eq!(sanitize_filename("hello"), "hello");
+        assert_eq!(sanitize_filename("test-file"), "test-file");
+        assert_eq!(sanitize_filename("file_name.png"), "file_name.png");
+    }
+
+    #[test]
+    fn test_sanitize_filename_special_chars() {
+        assert_eq!(sanitize_filename("file/name"), "file_name");
+        assert_eq!(sanitize_filename("file\\name"), "file_name");
+        assert_eq!(sanitize_filename("file:name"), "file_name");
+        assert_eq!(sanitize_filename("file*name"), "file_name");
+        assert_eq!(sanitize_filename("file?name"), "file_name");
+        assert_eq!(sanitize_filename("file\"name"), "file_name");
+        assert_eq!(sanitize_filename("file<name>"), "file_name_");
+        assert_eq!(sanitize_filename("file|name"), "file_name");
+    }
+
+    #[test]
+    fn test_sanitize_filename_truncates_long_names() {
+        let long_name = "a".repeat(100);
+        let result = sanitize_filename(&long_name);
+        assert_eq!(result.len(), 50);
+    }
+
+    #[test]
+    fn test_sanitize_filename_non_ascii() {
+        assert_eq!(sanitize_filename("café"), "caf_");
+        assert_eq!(sanitize_filename("日本語"), "___");
+    }
+
+    #[test]
+    fn test_parse_csv_content_basic() {
+        let csv = "content,type,label\nhttps://example.com,url,Example\nhello world,text,Greeting";
+        let result = parse_csv_content(csv).unwrap();
+
+        assert!(result.success);
+        assert_eq!(result.total_rows, 2);
+        assert_eq!(result.items.len(), 2);
+
+        assert_eq!(result.items[0].content, "https://example.com");
+        assert_eq!(result.items[0].qr_type, "url");
+        assert_eq!(result.items[0].label, Some("Example".to_string()));
+
+        assert_eq!(result.items[1].content, "hello world");
+        assert_eq!(result.items[1].qr_type, "text");
+        assert_eq!(result.items[1].label, Some("Greeting".to_string()));
+    }
+
+    #[test]
+    fn test_parse_csv_content_auto_detect_type() {
+        let csv = "content\nhttps://example.com\ntel:+15551234567\nWIFI:T:WPA;S:Test;;";
+        let result = parse_csv_content(csv).unwrap();
+
+        assert!(result.success);
+        assert_eq!(result.items.len(), 3);
+        assert_eq!(result.items[0].qr_type, "url");
+        assert_eq!(result.items[1].qr_type, "phone");
+        assert_eq!(result.items[2].qr_type, "wifi");
+    }
+
+    #[test]
+    fn test_parse_csv_content_skips_empty_rows() {
+        let csv = "content\nhttps://example.com\n\nhello\n   \nworld";
+        let result = parse_csv_content(csv).unwrap();
+
+        assert!(result.success);
+        assert_eq!(result.items.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_csv_content_missing_content_column() {
+        let csv = "type,label\nurl,Example";
+        let result = parse_csv_content(csv);
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("content"));
+    }
+
+    #[test]
+    fn test_parse_csv_content_optional_columns() {
+        let csv = "content\nhttps://example.com";
+        let result = parse_csv_content(csv).unwrap();
+
+        assert!(result.success);
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items[0].qr_type, "url"); // auto-detected
+        assert_eq!(result.items[0].label, None);
+    }
+
+    #[test]
+    fn test_parse_csv_content_row_numbers() {
+        let csv = "content\nfirst\nsecond\nthird";
+        let result = parse_csv_content(csv).unwrap();
+
+        assert_eq!(result.items[0].row, 1);
+        assert_eq!(result.items[1].row, 2);
+        assert_eq!(result.items[2].row, 3);
+    }
+}

@@ -62,7 +62,7 @@ function App() {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            ◧ QR Forge
+            ◧ QR Foundry
           </span>
         </div>
         <div className="w-16" />

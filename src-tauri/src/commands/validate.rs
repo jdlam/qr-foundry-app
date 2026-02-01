@@ -206,3 +206,93 @@ fn detect_qr_type(content: &str) -> String {
         "text".to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_qr_type_all_types() {
+        // WiFi
+        assert_eq!(detect_qr_type("WIFI:T:WPA;S:Network;;"), "wifi");
+
+        // vCard
+        assert_eq!(detect_qr_type("BEGIN:VCARD\nVERSION:3.0"), "vcard");
+
+        // Email
+        assert_eq!(detect_qr_type("mailto:test@example.com"), "email");
+
+        // SMS
+        assert_eq!(detect_qr_type("sms:+15551234567"), "sms");
+        assert_eq!(detect_qr_type("smsto:+15551234567"), "sms");
+
+        // Phone
+        assert_eq!(detect_qr_type("tel:+15551234567"), "phone");
+
+        // Geo
+        assert_eq!(detect_qr_type("geo:37.7749,-122.4194"), "geo");
+
+        // Calendar
+        assert_eq!(detect_qr_type("BEGIN:VEVENT"), "calendar");
+
+        // URL
+        assert_eq!(detect_qr_type("https://example.com"), "url");
+        assert_eq!(detect_qr_type("http://example.com"), "url");
+
+        // Text (default)
+        assert_eq!(detect_qr_type("Hello World"), "text");
+        assert_eq!(detect_qr_type("12345"), "text");
+    }
+
+    #[test]
+    fn test_detect_qr_type_case_insensitive() {
+        assert_eq!(detect_qr_type("WIFI:T:WPA;;"), "wifi");
+        assert_eq!(detect_qr_type("wifi:t:wpa;;"), "wifi");
+        assert_eq!(detect_qr_type("MAILTO:test@example.com"), "email");
+        assert_eq!(detect_qr_type("TEL:+15551234567"), "phone");
+        assert_eq!(detect_qr_type("GEO:0,0"), "geo");
+        assert_eq!(detect_qr_type("HTTPS://EXAMPLE.COM"), "url");
+    }
+
+    #[test]
+    fn test_validation_result_structure() {
+        let result = ValidationResult {
+            state: "pass".to_string(),
+            decoded_content: Some("test".to_string()),
+            content_match: true,
+            message: "Success".to_string(),
+            suggestions: vec![],
+        };
+
+        assert_eq!(result.state, "pass");
+        assert_eq!(result.decoded_content, Some("test".to_string()));
+        assert!(result.content_match);
+        assert!(result.suggestions.is_empty());
+    }
+
+    #[test]
+    fn test_scan_result_structure() {
+        let success_result = ScanResult {
+            success: true,
+            content: Some("https://example.com".to_string()),
+            qr_type: Some("url".to_string()),
+            error: None,
+        };
+
+        assert!(success_result.success);
+        assert_eq!(success_result.content, Some("https://example.com".to_string()));
+        assert_eq!(success_result.qr_type, Some("url".to_string()));
+        assert!(success_result.error.is_none());
+
+        let failure_result = ScanResult {
+            success: false,
+            content: None,
+            qr_type: None,
+            error: Some("No QR code found".to_string()),
+        };
+
+        assert!(!failure_result.success);
+        assert!(failure_result.content.is_none());
+        assert!(failure_result.error.is_some());
+    }
+}

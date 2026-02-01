@@ -1,6 +1,6 @@
-# Contributing to QR Forge
+# Contributing to QR Foundry
 
-Thank you for your interest in contributing to QR Forge!
+Thank you for your interest in contributing to QR Foundry!
 
 ## Development Setup
 
@@ -15,8 +15,8 @@ Thank you for your interest in contributing to QR Forge!
 ### Getting Started
 ```bash
 # Clone the repository
-git clone https://github.com/jdlam/qr-forge.git
-cd qr-forge
+git clone https://github.com/jdlam/qr-foundry.git
+cd qr-foundry
 
 # Install dependencies
 npm install
@@ -99,7 +99,7 @@ cd src-tauri && cargo check && cargo clippy
 ## Project Structure
 
 ```
-qr-forge/
+qr-foundry/
 ├── src/                    # React frontend
 │   ├── components/         # UI components
 │   ├── hooks/              # Custom React hooks

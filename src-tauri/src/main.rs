@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    qr_forge_lib::run()
+    qr_foundry_lib::run()
 }

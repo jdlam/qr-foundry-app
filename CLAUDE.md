@@ -1,4 +1,4 @@
-# QR Forge
+# QR Foundry
 
 A Tauri-based desktop QR code generator with React + TypeScript frontend.
 
@@ -24,7 +24,7 @@ npm run tauri build
 ## Project Structure
 
 ```
-qr-forge/
+qr-foundry/
 ├── src/                    # React frontend
 │   ├── components/         # UI components by feature
 │   ├── hooks/              # Custom React hooks
@@ -107,19 +107,68 @@ xcode-select --install
 2. Ensure image is rendered at sufficient resolution (min 256px)
 3. Verify the QR content matches exactly (no trailing whitespace)
 
-## Testing Strategy
+## Testing
+
+**IMPORTANT: Always maintain test coverage when making changes.**
+
+### Test Coverage Guidelines
+
+When modifying code, you MUST:
+1. **Update existing tests** if you change behavior of tested code
+2. **Add new tests** for any new functionality
+3. **Run tests before committing** to ensure nothing is broken
+
+### Run All Tests
+```bash
+# Run frontend and backend tests
+npm run test:all
+```
+
+### Frontend Tests (Vitest)
+```bash
+# Run tests once
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run with coverage
+npm run test:coverage
+```
+
+Test files are co-located with source files using `.test.ts` or `.test.tsx` suffix:
+- `src/lib/formatters.test.ts` - QR content formatters
+- `src/stores/qrStore.test.ts` - Zustand store
+- `src/hooks/*.test.ts` - Custom React hooks
+- `src/components/**/*.test.tsx` - React components
+
+### Backend Tests (Rust)
+```bash
+cd src-tauri && cargo test
+```
+
+Tests are in `#[cfg(test)]` modules within source files:
+- `src/commands/batch.rs` - CSV parsing, filename sanitization
+- `src/commands/validate.rs` - QR type detection
+- `src/commands/export.rs` - Base64 handling
+- `src/db/history.rs` - History database operations
+- `src/db/templates.rs` - Template database operations
+
+### Writing Tests
+
+**Frontend (Vitest + React Testing Library):**
+- Use `vi.mock()` for mocking Tauri APIs and external dependencies
+- Use `renderHook()` from `@testing-library/react` for hooks
+- Use `render()` and `screen` for component tests
+- Test user interactions with `fireEvent` or `userEvent`
+
+**Backend (Rust):**
+- Use `#[cfg(test)]` module at end of source file
+- Use in-memory SQLite with `Connection::open_in_memory()`
+- Use `r##"..."##` for raw strings containing `#` (like hex colors)
 
 ### Manual Testing
 Use the validation checklist above after each change.
-
-### Automated Testing (when added)
-```bash
-# Frontend tests
-npm test
-
-# Rust tests
-cd src-tauri && cargo test
-```
 
 ## Feature Flags
 
