@@ -19,12 +19,7 @@ pub async fn export_png(
     image_data: String,
     suggested_name: Option<String>,
 ) -> Result<ExportResult, String> {
-    // Strip data URL prefix if present
-    let base64_data = if image_data.contains(",") {
-        image_data.split(",").nth(1).unwrap_or(&image_data)
-    } else {
-        &image_data
-    };
+    let base64_data = strip_data_url_prefix(&image_data);
 
     let image_bytes = STANDARD
         .decode(base64_data)
@@ -106,12 +101,7 @@ pub async fn copy_image_to_clipboard(
     use tauri::image::Image;
     use tauri_plugin_clipboard_manager::ClipboardExt;
 
-    // Strip data URL prefix if present
-    let base64_data = if image_data.contains(",") {
-        image_data.split(",").nth(1).unwrap_or(&image_data)
-    } else {
-        &image_data
-    };
+    let base64_data = strip_data_url_prefix(&image_data);
 
     let image_bytes = STANDARD
         .decode(base64_data)
