@@ -6,13 +6,26 @@ import { useExport } from '../../hooks/useExport';
 import { useQrStore } from '../../stores/qrStore';
 import { ValidationBadge } from './ValidationBadge';
 
+// Checkerboard pattern for showing transparency
+const checkerboardStyle = {
+  backgroundImage: `
+    linear-gradient(45deg, #808080 25%, transparent 25%),
+    linear-gradient(-45deg, #808080 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #808080 75%),
+    linear-gradient(-45deg, transparent 75%, #808080 75%)
+  `,
+  backgroundSize: '16px 16px',
+  backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+  backgroundColor: '#a0a0a0',
+};
+
 export function Preview() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { getDataUrl, getValidationDataUrl, getBlob } = useQrGenerator(containerRef);
   const { validate, isValidating, result } = useValidation();
   const { exportPng, exportSvg, copyToClipboard, isExporting } = useExport();
   const store = useQrStore();
-  const { exportSize, inputType, errorCorrection, content, validationState } = store;
+  const { exportSize, inputType, errorCorrection, content, validationState, transparentBg } = store;
 
   const [copySuccess, setCopySuccess] = useState(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
@@ -160,7 +173,8 @@ export function Preview() {
       <div className="bg-surface rounded-2xl p-6 border border-border shadow-lg">
         <div
           ref={containerRef}
-          className="w-[300px] h-[300px] flex items-center justify-center"
+          className="w-[300px] h-[300px] flex items-center justify-center rounded-lg"
+          style={transparentBg ? checkerboardStyle : undefined}
         />
       </div>
 
