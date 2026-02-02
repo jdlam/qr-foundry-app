@@ -1,5 +1,8 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
+import { readFile } from '@tauri-apps/plugin-fs';
 import { useQrStore } from '../../stores/qrStore';
+import { useTauriDragDrop } from '../../hooks/useTauriDragDrop';
+import { optimizeImage, blobToDataUrl } from '../../lib/imageOptimizer';
 import type { DotStyle, CornerSquareStyle, ErrorCorrection } from '../../types/qr';
 
 const DOT_STYLES: { id: DotStyle; label: string; name: string }[] = [
@@ -23,6 +26,9 @@ const EC_LEVELS: { id: ErrorCorrection; percent: string; desc: string }[] = [
   { id: 'Q', percent: '25%', desc: 'Good with logo' },
   { id: 'H', percent: '30%', desc: 'Best with logo' },
 ];
+
+// Default logo size that fills ~80% of the logo area (32 out of 40 max)
+const DEFAULT_LOGO_SIZE = 32;
 
 function ColorSwatch({
   label,
@@ -71,42 +77,110 @@ export function StylePanel() {
   } = useQrStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
-  const handleLogoUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  // Clear error after 3 seconds
+  useEffect(() => {
+    if (logoError) {
+      const timer = setTimeout(() => setLogoError(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [logoError]);
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
+  // Load logo from file path (used by Tauri drag-drop)
+  const loadLogoFromPath = useCallback(
+    async (filePath: string) => {
+      // Check if it's an image file
+      const ext = filePath.toLowerCase().split('.').pop();
+      if (!['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || '')) {
+        setLogoError('Invalid file type. Use PNG, JPG, or SVG.');
+        return;
+      }
+
+      try {
+        const data = await readFile(filePath);
+        const mimeType = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+        // Convert Uint8Array to data URL
+        const blob = new Blob([data], { type: mimeType });
+        const rawDataUrl = await blobToDataUrl(blob);
+
+        // Optimize image (resize and compress)
+        const optimized = await optimizeImage(rawDataUrl, mimeType);
+
+        setLogoError(null);
         setLogo({
-          src: reader.result as string,
-          size: 25,
+          src: optimized.dataUrl,
+          size: DEFAULT_LOGO_SIZE,
           margin: 5,
           shape: 'square',
         });
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Failed to load logo:', err);
+        setLogoError('Failed to load file.');
+      }
+    },
+    [setLogo]
+  );
+
+  // Handle Tauri native drag-drop
+  const { isDragging: isTauriDragging, droppedFiles, clearDroppedFiles } = useTauriDragDrop();
+
+  useEffect(() => {
+    if (droppedFiles.length > 0) {
+      loadLogoFromPath(droppedFiles[0]);
+      clearDroppedFiles();
+    }
+  }, [droppedFiles, loadLogoFromPath, clearDroppedFiles]);
+
+  const handleLogoUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const rawDataUrl = await blobToDataUrl(file);
+        const optimized = await optimizeImage(rawDataUrl, file.type);
+
+        setLogoError(null);
+        setLogo({
+          src: optimized.dataUrl,
+          size: DEFAULT_LOGO_SIZE,
+          margin: 5,
+          shape: 'square',
+        });
+      } catch (err) {
+        console.error('Failed to load logo:', err);
+        setLogoError('Failed to load file.');
+      }
     },
     [setLogo]
   );
 
   const handleLogoDrop = useCallback(
-    (e: React.DragEvent) => {
+    async (e: React.DragEvent) => {
       e.preventDefault();
       const file = e.dataTransfer.files[0];
-      if (!file || !file.type.startsWith('image/')) return;
+      if (!file || !file.type.startsWith('image/')) {
+        setLogoError('Invalid file type. Use PNG, JPG, or SVG.');
+        return;
+      }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
+      try {
+        const rawDataUrl = await blobToDataUrl(file);
+        const optimized = await optimizeImage(rawDataUrl, file.type);
+
+        setLogoError(null);
         setLogo({
-          src: reader.result as string,
-          size: 25,
+          src: optimized.dataUrl,
+          size: DEFAULT_LOGO_SIZE,
           margin: 5,
           shape: 'square',
         });
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Failed to load logo:', err);
+        setLogoError('Failed to load file.');
+      }
     },
     [setLogo]
   );
@@ -298,16 +372,31 @@ export function StylePanel() {
             </div>
           </div>
         ) : (
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleLogoDrop}
-            className="border-2 border-dashed border-border-light rounded-lg p-4 text-center cursor-pointer hover:border-accent/50 transition-colors"
-          >
-            <span className="text-2xl opacity-40">+</span>
-            <div className="text-[10px] text-dim mt-1">Drop logo or click to upload</div>
-            <div className="text-[9px] text-dim">PNG, JPG, SVG</div>
-          </div>
+          <>
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleLogoDrop}
+              className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                isTauriDragging
+                  ? 'border-accent bg-accent/5'
+                  : logoError
+                    ? 'border-danger/50 bg-danger/5'
+                    : 'border-border-light hover:border-accent/50'
+              }`}
+            >
+              <span className="text-2xl opacity-40">+</span>
+              <div className="text-[10px] text-dim mt-1">
+                {isTauriDragging ? 'Drop to add logo' : 'Drop logo or click to upload'}
+              </div>
+              <div className="text-[9px] text-dim">PNG, JPG, SVG (auto-resized)</div>
+            </div>
+            {logoError && (
+              <div className="text-[9px] text-danger mt-1.5 p-1.5 bg-danger/10 rounded border border-danger/20">
+                {logoError}
+              </div>
+            )}
+          </>
         )}
       </div>
 

@@ -72,20 +72,29 @@ export function useQrGenerator(containerRef: React.RefObject<HTMLDivElement | nu
         dotsOptions: {
           type: dotStyleMap[dotStyle],
           color: foreground,
+          gradient: undefined,
         },
         cornersSquareOptions: {
           type: cornerSquareStyleMap[cornerSquareStyle],
           color: foreground,
+          gradient: undefined,
         },
         cornersDotOptions: {
           type: cornerDotStyleMap[cornerDotStyle],
           color: foreground,
+          gradient: undefined,
         },
         backgroundOptions: transparentBg
           ? undefined
           : {
               color: background,
             },
+        image: '',
+        imageOptions: {
+          hideBackgroundDots: true,
+          imageSize: 0.4,
+          margin: 0,
+        },
       };
 
       // Add gradient if enabled

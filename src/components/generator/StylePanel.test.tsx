@@ -1,11 +1,49 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { StylePanel } from './StylePanel';
 import { useQrStore } from '../../stores/qrStore';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { readFile } from '@tauri-apps/plugin-fs';
+import { optimizeImage, blobToDataUrl } from '../../lib/imageOptimizer';
+
+vi.mock('@tauri-apps/api/webviewWindow');
+vi.mock('@tauri-apps/plugin-fs');
+vi.mock('../../lib/imageOptimizer');
 
 describe('StylePanel', () => {
+  let mockDragDropHandler: ((event: { payload: { type: string; paths?: string[] } }) => void) | null =
+    null;
+  let mockUnlisten: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     useQrStore.getState().reset();
+    mockDragDropHandler = null;
+    mockUnlisten = vi.fn();
+
+    vi.mocked(getCurrentWebviewWindow).mockReturnValue({
+      onDragDropEvent: vi.fn((handler) => {
+        mockDragDropHandler = handler;
+        return Promise.resolve(mockUnlisten);
+      }),
+    } as unknown as ReturnType<typeof getCurrentWebviewWindow>);
+
+    vi.mocked(readFile).mockReset();
+
+    // Mock image optimizer to return optimized data URL
+    vi.mocked(blobToDataUrl).mockImplementation(async (blob: Blob) => {
+      return `data:${blob.type || 'image/png'};base64,optimized`;
+    });
+    vi.mocked(optimizeImage).mockImplementation(async (dataUrl: string, _mimeType: string) => {
+      return {
+        dataUrl: dataUrl.replace('base64,', 'base64,optimized_'),
+        originalWidth: 1000,
+        originalHeight: 1000,
+        finalWidth: 512,
+        finalHeight: 512,
+        wasResized: true,
+        wasTrimmed: true,
+      };
+    });
   });
 
   describe('Dot Style', () => {
@@ -142,7 +180,7 @@ describe('StylePanel', () => {
       render(<StylePanel />);
 
       expect(screen.getByText('Drop logo or click to upload')).toBeInTheDocument();
-      expect(screen.getByText('PNG, JPG, SVG')).toBeInTheDocument();
+      expect(screen.getByText(/PNG, JPG, SVG.*auto-resized/)).toBeInTheDocument();
     });
 
     it('renders logo controls when logo is set', () => {
@@ -278,6 +316,235 @@ describe('StylePanel', () => {
       render(<StylePanel />);
 
       expect(screen.queryByText(/Use Q or H when embedding a logo/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Drag and Drop Logo', () => {
+    it('loads logo when image file is dropped via Tauri drag-drop', async () => {
+      // Mock readFile to return fake PNG data
+      const fakeImageData = new Uint8Array([137, 80, 78, 71]); // PNG magic bytes
+      vi.mocked(readFile).mockResolvedValue(fakeImageData);
+
+      render(<StylePanel />);
+
+      // Wait for the drag-drop handler to be registered
+      await waitFor(() => {
+        expect(mockDragDropHandler).not.toBeNull();
+      });
+
+      // Simulate dropping a PNG file
+      await act(async () => {
+        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/logo.png'] } });
+      });
+
+      // Wait for the logo to be loaded
+      await waitFor(() => {
+        expect(useQrStore.getState().logo).not.toBeNull();
+      });
+
+      // Verify readFile was called with the correct path
+      expect(readFile).toHaveBeenCalledWith('/path/to/logo.png');
+
+      // Verify logo was set with correct properties
+      const logo = useQrStore.getState().logo;
+      expect(logo?.src).toMatch(/^data:image\/png;base64,/);
+      expect(logo?.size).toBe(32);
+      expect(logo?.margin).toBe(5);
+      expect(logo?.shape).toBe('square');
+    });
+
+    it('loads JPEG files correctly with proper mime type', async () => {
+      const fakeImageData = new Uint8Array([255, 216, 255]); // JPEG magic bytes
+      vi.mocked(readFile).mockResolvedValue(fakeImageData);
+
+      render(<StylePanel />);
+
+      await waitFor(() => {
+        expect(mockDragDropHandler).not.toBeNull();
+      });
+
+      await act(async () => {
+        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/photo.jpg'] } });
+      });
+
+      await waitFor(() => {
+        expect(useQrStore.getState().logo).not.toBeNull();
+      });
+
+      // JPEG should use image/jpeg mime type
+      const logo = useQrStore.getState().logo;
+      expect(logo?.src).toMatch(/^data:image\/jpeg;base64,/);
+    });
+
+    it('loads SVG files correctly with proper mime type', async () => {
+      const svgContent = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
+      const fakeImageData = new TextEncoder().encode(svgContent);
+      vi.mocked(readFile).mockResolvedValue(fakeImageData);
+
+      render(<StylePanel />);
+
+      await waitFor(() => {
+        expect(mockDragDropHandler).not.toBeNull();
+      });
+
+      await act(async () => {
+        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/icon.svg'] } });
+      });
+
+      await waitFor(() => {
+        expect(useQrStore.getState().logo).not.toBeNull();
+      });
+
+      const logo = useQrStore.getState().logo;
+      expect(logo?.src).toMatch(/^data:image\/svg\+xml;base64,/);
+    });
+
+    it('ignores non-image files', async () => {
+      render(<StylePanel />);
+
+      await waitFor(() => {
+        expect(mockDragDropHandler).not.toBeNull();
+      });
+
+      // Drop a non-image file
+      await act(async () => {
+        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/document.pdf'] } });
+      });
+
+      // Logo should not be set
+      expect(useQrStore.getState().logo).toBeNull();
+      expect(readFile).not.toHaveBeenCalled();
+    });
+
+    it('shows drag indicator when dragging over app', async () => {
+      render(<StylePanel />);
+
+      await waitFor(() => {
+        expect(mockDragDropHandler).not.toBeNull();
+      });
+
+      // Trigger drag over
+      await act(async () => {
+        mockDragDropHandler!({ payload: { type: 'over' } });
+      });
+
+      // Should show "Drop to add logo" text
+      await waitFor(() => {
+        expect(screen.getByText('Drop to add logo')).toBeInTheDocument();
+      });
+    });
+
+    it('hides drag indicator when drag leaves', async () => {
+      render(<StylePanel />);
+
+      await waitFor(() => {
+        expect(mockDragDropHandler).not.toBeNull();
+      });
+
+      // Trigger drag over then leave
+      await act(async () => {
+        mockDragDropHandler!({ payload: { type: 'over' } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Drop to add logo')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        mockDragDropHandler!({ payload: { type: 'leave' } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Drop logo or click to upload')).toBeInTheDocument();
+      });
+    });
+
+    it('replaces existing logo when new file is dropped', async () => {
+      // Set an existing logo
+      useQrStore.getState().setLogo({
+        src: 'data:image/png;base64,oldlogo',
+        size: 30,
+        margin: 10,
+        shape: 'circle',
+      });
+
+      const fakeImageData = new Uint8Array([137, 80, 78, 71]);
+      vi.mocked(readFile).mockResolvedValue(fakeImageData);
+
+      render(<StylePanel />);
+
+      await waitFor(() => {
+        expect(mockDragDropHandler).not.toBeNull();
+      });
+
+      // Drop a new file
+      await act(async () => {
+        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/newlogo.png'] } });
+      });
+
+      await waitFor(() => {
+        const logo = useQrStore.getState().logo;
+        // New logo should have default size/margin/shape
+        expect(logo?.size).toBe(32);
+        expect(logo?.margin).toBe(5);
+        expect(logo?.shape).toBe('square');
+      });
+    });
+
+    it('handles file read errors gracefully', async () => {
+      vi.mocked(readFile).mockRejectedValue(new Error('File not found'));
+
+      // Spy on console.error
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      render(<StylePanel />);
+
+      await waitFor(() => {
+        expect(mockDragDropHandler).not.toBeNull();
+      });
+
+      await act(async () => {
+        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/missing.png'] } });
+      });
+
+      await waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith('Failed to load logo:', expect.any(Error));
+      });
+
+      // Logo should not be set
+      expect(useQrStore.getState().logo).toBeNull();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('automatically resizes large files instead of rejecting', async () => {
+      // Create a mock large file - should be resized, not rejected
+      const largeFileData = new Uint8Array(600 * 1024); // 600KB
+      vi.mocked(readFile).mockResolvedValue(largeFileData);
+
+      render(<StylePanel />);
+
+      await waitFor(() => {
+        expect(mockDragDropHandler).not.toBeNull();
+      });
+
+      await act(async () => {
+        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/large-logo.png'] } });
+      });
+
+      // Logo should be set (auto-resized)
+      await waitFor(() => {
+        expect(useQrStore.getState().logo).not.toBeNull();
+      });
+
+      // Verify optimizeImage was called
+      expect(optimizeImage).toHaveBeenCalled();
+    });
+
+    it('displays auto-resize info in drop zone', () => {
+      render(<StylePanel />);
+
+      expect(screen.getByText(/auto-resized/)).toBeInTheDocument();
     });
   });
 });
