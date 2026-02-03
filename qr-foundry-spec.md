@@ -688,3 +688,45 @@ Since it's a paid download with no free tier:
 - [ ] Free web app version
 - [ ] Open source CLI tool
 - [ ] App Store screenshot optimization
+
+### Future Features (Backlog)
+
+#### Settings/Preferences System
+
+- [ ] Create settings infrastructure (Tauri store or SQLite)
+- [ ] Native macOS Preferences menu item (Cmd+,)
+- [ ] Settings window or in-app settings tab
+
+**Proposed settings:**
+
+- Default export format (PNG/SVG)
+- Default export size (512px, 1024px, 2048px, 4096px)
+- Default error correction level (L/M/Q/H)
+- Theme preference (dark/light/system)
+- Default template to apply on startup
+- History settings:
+  - Auto-save generated QRs to history (on/off)
+  - History retention period (7 days, 30 days, forever)
+  - Clear history on app quit (on/off)
+- Batch export settings:
+  - Default output folder
+  - Filename pattern template
+
+#### Native App Menu
+
+- [ ] Implement Tauri native menu system
+- [ ] File menu: New QR, Open (history item), Export, Export As...
+- [ ] Edit menu: Undo, Redo, Cut, Copy, Paste, Select All
+- [ ] View menu: Toggle sidebar, Zoom controls
+- [ ] QR menu: Validate, Copy to Clipboard, Save to History
+- [ ] Window menu: Standard window controls
+- [ ] Help menu: Documentation, Check for Updates, About
+
+#### Other Future Ideas
+
+- [ ] Keyboard shortcuts customization
+- [ ] iCloud sync for templates and history
+- [ ] Quick Actions / Shortcuts integration (macOS)
+- [ ] Menu bar quick-generate mode
+- [ ] PDF/EPS export formats
+- [ ] Dynamic QR codes (with tracking URL)
