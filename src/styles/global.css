@@ -105,3 +105,113 @@ input[type="file"],
   background: var(--accent);
   color: var(--bg);
 }
+
+/* ==========================================
+   Mobile & iOS Support
+   ========================================== */
+
+/* Safe area insets for iOS notch and home indicator */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+}
+
+/* Utility classes for safe areas */
+.pt-safe { padding-top: var(--safe-area-inset-top); }
+.pb-safe { padding-bottom: var(--safe-area-inset-bottom); }
+.pl-safe { padding-left: var(--safe-area-inset-left); }
+.pr-safe { padding-right: var(--safe-area-inset-right); }
+.p-safe {
+  padding-top: var(--safe-area-inset-top);
+  padding-bottom: var(--safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+}
+
+/* Mobile-optimized touch targets (44pt minimum) */
+@media (max-width: 639px) {
+  button,
+  [role="button"],
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger font for mobile readability */
+  body {
+    font-size: 15px;
+  }
+
+  /* Prevent text size adjustment on orientation change */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Prevent pull-to-refresh and overscroll bounce */
+  body {
+    overscroll-behavior: none;
+  }
+
+  /* Hide scrollbars on mobile */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  * {
+    scrollbar-width: none;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 640px) and (max-width: 1023px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+/* Prevent iOS tap highlight */
+@supports (-webkit-touch-callout: none) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* iOS standalone app (home screen) */
+@media (display-mode: standalone) {
+  body {
+    /* Prevent overscroll when running as standalone app */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* Bottom sheet animation */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
