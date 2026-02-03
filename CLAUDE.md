@@ -45,54 +45,54 @@ qr-foundry/
 After making changes, validate using this checklist:
 
 ### Core Functionality
-- [ ] `npm run tauri dev` starts without errors
-- [ ] QR code renders in preview when content is entered
-- [ ] Changing content updates preview in real-time
-- [ ] Style changes (colors, dot style) reflect immediately
+- [x] `npm run tauri dev` starts without errors
+- [x] QR code renders in preview when content is entered
+- [x] Changing content updates preview in real-time
+- [x] Style changes (colors, dot style) reflect immediately
 
 ### Export
-- [ ] PNG download saves valid image file
+- [x] PNG download saves valid image file
 - [ ] SVG export produces scalable vector
 - [ ] Clipboard copy works (paste into another app)
 
 ### QR Validation
-- [ ] "Validate QR" button triggers validation
-- [ ] Pass state shows green checkmark
-- [ ] Large logo + low EC level triggers warn/fail
+- [x] "Validate QR" button triggers validation
+- [x] Pass state shows green checkmark
+- [x] Large logo + low EC level triggers warn/fail
 
 ### Input Types
-- [ ] URL: Scan opens browser
+- [x] URL: Scan opens browser
 - [ ] WiFi: Scan prompts WiFi connection
 - [ ] vCard: Scan creates contact
 - [ ] Phone: Scan offers to call
 - [ ] Email: Scan opens mail compose
 
 ### Scanner
-- [ ] Dropping QR image decodes content
+- [x] Dropping QR image decodes content
 - [ ] Clipboard paste (Cmd+V) decodes
-- [ ] "Re-generate" loads content into Generator
+- [x] "Re-generate" loads content into Generator
 
 ### History & Templates
-- [ ] Generated QRs appear in History
+- [x] Generated QRs appear in History
 - [ ] Clicking history item loads it
-- [ ] Saving template preserves all style settings
-- [ ] Loading template applies all styles
+- [x] Saving template preserves all style settings
+- [x] Loading template applies all styles
 
 ### Batch
-- [ ] CSV drop parses rows correctly
-- [ ] Preview gallery shows QR codes
+- [x] CSV drop parses rows correctly
+- [x] Preview gallery shows QR codes
 - [ ] Arrow keys navigate between previews
-- [ ] Format switch (PNG/SVG) resets generation state
-- [ ] Generate creates and validates all QRs
-- [ ] Failed validations show in status column
+- [x] Format switch (PNG/SVG) resets generation state
+- [x] Generate creates and validates all QRs
+- [x] Failed validations show in status column
 - [ ] ZIP export works with toast confirmation
-- [ ] Individual download works from preview
+- [x] Individual download works from preview
 
 ### Logo Upload
 - [ ] Drag-drop image sets logo
-- [ ] Large images auto-resize (max 512px)
-- [ ] Transparent borders auto-trimmed
-- [ ] Files over 500KB auto-compressed
+- [x] Large images auto-resize (max 512px)
+- [x] Transparent borders auto-trimmed
+- [x] Files over 500KB auto-compressed
 
 ### Toasts
 - [ ] Success toast on export/copy operations
