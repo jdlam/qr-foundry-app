@@ -1,21 +1,18 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import QRCodeStyling from 'qr-code-styling';
-import { useBatch, type BatchItem, type BatchGenerateItem } from '../../hooks/useBatch';
+import { useBatch, type BatchGenerateItem } from '../../hooks/useBatch';
 import { useQrStore } from '../../stores/qrStore';
+import {
+  useBatchStore,
+  type BatchItemWithStatus,
+  type ItemStatus,
+  type ExportFormat,
+} from '../../stores/batchStore';
 import { useTauriDragDrop } from '../../hooks/useTauriDragDrop';
-
-type ItemStatus = 'pending' | 'generating' | 'done' | 'error';
-type ExportFormat = 'png' | 'svg';
-
-interface BatchItemWithStatus extends BatchItem {
-  status: ItemStatus;
-  imageData?: string;
-  error?: string;
-}
+import { useState } from 'react';
 
 export function BatchView() {
   const {
-    items,
     isParsing,
     isGenerating,
     parseError,
@@ -27,12 +24,22 @@ export function BatchView() {
     clearBatch,
   } = useBatch();
 
-  const [itemsWithStatus, setItemsWithStatus] = useState<BatchItemWithStatus[]>([]);
+  const {
+    itemsWithStatus,
+    generatedItems,
+    generateProgress,
+    previewIndex,
+    exportFormat,
+    isValidating,
+    setItemsWithStatus,
+    setGeneratedItems,
+    setGenerateProgress,
+    setPreviewIndex,
+    setExportFormat,
+    setIsValidating,
+  } = useBatchStore();
+
   const [isHtmlDragging, setIsHtmlDragging] = useState(false);
-  const [generateProgress, setGenerateProgress] = useState(0);
-  const [previewIndex, setPreviewIndex] = useState(0);
-  const [exportFormat, setExportFormat] = useState<ExportFormat>('png');
-  const [generatedItems, setGeneratedItems] = useState<BatchGenerateItem[]>([]);
   const [isLocalGenerating, setIsLocalGenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const generatingRef = useRef<Set<number>>(new Set());
@@ -55,35 +62,22 @@ export function BatchView() {
   // Combine both drag states for visual feedback
   const isDragging = isHtmlDragging || isTauriDragging;
 
-  // Sync items with status
-  useEffect(() => {
-    setItemsWithStatus(
-      items.map((item) => ({
-        ...item,
-        status: 'pending' as ItemStatus,
-      }))
-    );
-    setPreviewIndex(0);
-    setGeneratedItems([]);
-    generatingRef.current.clear();
-  }, [items]);
-
   // Preview navigation
   const currentPreviewItem = itemsWithStatus[previewIndex] || null;
   const canGoPrev = previewIndex > 0;
   const canGoNext = previewIndex < itemsWithStatus.length - 1;
 
   const goToPrevItem = useCallback(() => {
-    if (canGoPrev) setPreviewIndex((i) => i - 1);
-  }, [canGoPrev]);
+    if (canGoPrev) setPreviewIndex(previewIndex - 1);
+  }, [canGoPrev, previewIndex, setPreviewIndex]);
 
   const goToNextItem = useCallback(() => {
-    if (canGoNext) setPreviewIndex((i) => i + 1);
-  }, [canGoNext]);
+    if (canGoNext) setPreviewIndex(previewIndex + 1);
+  }, [canGoNext, previewIndex, setPreviewIndex]);
 
   const selectPreviewItem = useCallback((index: number) => {
     setPreviewIndex(index);
-  }, []);
+  }, [setPreviewIndex]);
 
   // Keyboard navigation for preview
   useEffect(() => {
@@ -92,16 +86,16 @@ export function BatchView() {
 
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        if (canGoPrev) setPreviewIndex((i) => i - 1);
+        if (canGoPrev) setPreviewIndex(previewIndex - 1);
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        if (canGoNext) setPreviewIndex((i) => i + 1);
+        if (canGoNext) setPreviewIndex(previewIndex + 1);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [itemsWithStatus.length, canGoPrev, canGoNext]);
+  }, [itemsWithStatus.length, canGoPrev, canGoNext, previewIndex, setPreviewIndex]);
 
   const handleFileDrop = useCallback(
     async (file: File) => {
@@ -151,46 +145,85 @@ export function BatchView() {
   );
 
   const generateQrForItem = useCallback(
-    async (item: BatchItemWithStatus, format: ExportFormat): Promise<string | null> => {
+    async (
+      item: BatchItemWithStatus,
+      format: ExportFormat,
+      forValidation: boolean = false
+    ): Promise<string | null> => {
       return new Promise((resolve) => {
-        const qr = new QRCodeStyling({
-          width: store.exportSize,
-          height: store.exportSize,
-          type: format === 'svg' ? 'svg' : 'canvas',
-          data: item.content,
-          margin: 10,
-          qrOptions: {
-            errorCorrectionLevel: store.errorCorrection,
-          },
-          dotsOptions: {
-            type: store.dotStyle,
-            color: store.foreground,
-          },
-          cornersSquareOptions: {
-            type: store.cornerSquareStyle,
-            color: store.foreground,
-          },
-          cornersDotOptions: {
-            type: store.cornerDotStyle,
-            color: store.foreground,
-          },
-          backgroundOptions: store.transparentBg
-            ? { color: 'transparent' }
-            : { color: store.background },
-          // Only include image options when there's a logo to avoid library errors
-          ...(store.logo?.src
-            ? {
-                image: store.logo.src,
-                imageOptions: {
-                  hideBackgroundDots: true,
-                  imageSize: store.logo.size / 100,
-                  margin: store.logo.margin,
-                },
-              }
-            : {}),
-        });
+        let qr: QRCodeStyling;
 
-        qr.getRawData(format).then((blob) => {
+        if (forValidation) {
+          // For validation, generate a clean, simple QR code that's easy to decode
+          // This matches the approach used in useQrGenerator.getValidationDataUrl()
+          qr = new QRCodeStyling({
+            width: 512,
+            height: 512,
+            type: 'canvas',
+            data: item.content,
+            margin: 20,
+            qrOptions: {
+              typeNumber: 0,
+              mode: 'Byte',
+              errorCorrectionLevel: store.errorCorrection,
+            },
+            dotsOptions: {
+              type: 'square',
+              color: '#000000',
+            },
+            cornersSquareOptions: {
+              type: 'square',
+              color: '#000000',
+            },
+            cornersDotOptions: {
+              type: 'square',
+              color: '#000000',
+            },
+            backgroundOptions: {
+              color: '#ffffff',
+            },
+          });
+        } else {
+          // For export, use the user's styling preferences
+          qr = new QRCodeStyling({
+            width: store.exportSize,
+            height: store.exportSize,
+            type: format === 'svg' ? 'svg' : 'canvas',
+            data: item.content,
+            margin: 10,
+            qrOptions: {
+              errorCorrectionLevel: store.errorCorrection,
+            },
+            dotsOptions: {
+              type: store.dotStyle,
+              color: store.foreground,
+            },
+            cornersSquareOptions: {
+              type: store.cornerSquareStyle,
+              color: store.foreground,
+            },
+            cornersDotOptions: {
+              type: store.cornerDotStyle,
+              color: store.foreground,
+            },
+            backgroundOptions: store.transparentBg
+              ? { color: 'transparent' }
+              : { color: store.background },
+            // Only include image options when there's a logo to avoid library errors
+            ...(store.logo?.src
+              ? {
+                  image: store.logo.src,
+                  imageOptions: {
+                    hideBackgroundDots: true,
+                    imageSize: store.logo.size / 100,
+                    margin: store.logo.margin,
+                  },
+                }
+              : {}),
+          });
+        }
+
+        qr.getRawData(forValidation ? 'png' : format).then((blob) => {
           if (!blob) {
             resolve(null);
             return;
@@ -220,8 +253,8 @@ export function BatchView() {
     generatingRef.current.add(previewIndex);
 
     // Mark as generating
-    setItemsWithStatus((current) =>
-      current.map((it, idx) =>
+    setItemsWithStatus(
+      itemsWithStatus.map((it, idx) =>
         idx === previewIndex ? { ...it, status: 'generating' as ItemStatus } : it
       )
     );
@@ -229,8 +262,8 @@ export function BatchView() {
     // Generate the QR code for preview (always use PNG for preview)
     generateQrForItem(item, 'png')
       .then((imageData) => {
-        setItemsWithStatus((prev) =>
-          prev.map((it, idx) =>
+        setItemsWithStatus(
+          itemsWithStatus.map((it, idx) =>
             idx === previewIndex
               ? {
                   ...it,
@@ -244,8 +277,8 @@ export function BatchView() {
       })
       .catch((error) => {
         console.error('Failed to generate preview QR:', error);
-        setItemsWithStatus((prev) =>
-          prev.map((it, idx) =>
+        setItemsWithStatus(
+          itemsWithStatus.map((it, idx) =>
             idx === previewIndex
               ? { ...it, status: 'error' as ItemStatus, error: 'Failed to generate' }
               : it
@@ -255,7 +288,7 @@ export function BatchView() {
       .finally(() => {
         generatingRef.current.delete(previewIndex);
       });
-  }, [previewIndex, itemsWithStatus, generateQrForItem]);
+  }, [previewIndex, itemsWithStatus, generateQrForItem, setItemsWithStatus]);
 
   // Generate all QR codes with validation
   const handleGenerateAll = useCallback(async () => {
@@ -264,6 +297,7 @@ export function BatchView() {
     setIsLocalGenerating(true);
     setGenerateProgress(0);
     const generated: BatchGenerateItem[] = [];
+    const forValidation: BatchGenerateItem[] = [];
     const updatedItems = [...itemsWithStatus];
 
     try {
@@ -284,6 +318,18 @@ export function BatchView() {
               label: item.label,
               imageData,
             });
+
+            // Generate a PNG version with white background for validation
+            // (validation requires raster images with solid backgrounds)
+            const pngForValidation = await generateQrForItem(item, 'png', true);
+            if (pngForValidation) {
+              forValidation.push({
+                row: item.row,
+                content: item.content,
+                label: item.label,
+                imageData: pngForValidation,
+              });
+            }
           } else {
             updatedItems[i] = { ...item, status: 'error', error: 'Failed to generate' };
           }
@@ -296,14 +342,21 @@ export function BatchView() {
         setGenerateProgress(((i + 1) / updatedItems.length) * 100);
       }
 
-      // Step 2: Validate all generated QR codes
-      if (generated.length > 0) {
+      // Step 2: Validate all generated QR codes (using PNG versions)
+      if (forValidation.length > 0) {
+        // Mark all generated items as validating
+        setIsValidating(true);
+        const validatingItems = updatedItems.map((item) =>
+          item.status === 'done' ? { ...item, status: 'validating' as ItemStatus } : item
+        );
+        setItemsWithStatus(validatingItems);
+
         try {
-          const validationResults = await validateBatch(generated);
+          const validationResults = await validateBatch(forValidation);
 
           // Update items with validation results
-          setItemsWithStatus((current) =>
-            current.map((item) => {
+          setItemsWithStatus(
+            validatingItems.map((item) => {
               const validation = validationResults.find((v) => v.row === item.row);
               if (validation) {
                 if (!validation.success) {
@@ -318,6 +371,11 @@ export function BatchView() {
                     status: 'error' as ItemStatus,
                     error: 'Content mismatch',
                   };
+                } else {
+                  return {
+                    ...item,
+                    status: 'validated' as ItemStatus,
+                  };
                 }
               }
               return item;
@@ -325,6 +383,14 @@ export function BatchView() {
           );
         } catch (error) {
           console.error('Failed to validate batch:', error);
+          // Revert to done status if validation fails entirely
+          setItemsWithStatus(
+            validatingItems.map((item) =>
+              item.status === 'validating' ? { ...item, status: 'done' as ItemStatus } : item
+            )
+          );
+        } finally {
+          setIsValidating(false);
         }
       }
 
@@ -332,17 +398,17 @@ export function BatchView() {
     } finally {
       setIsLocalGenerating(false);
     }
-  }, [itemsWithStatus, generateQrForItem, exportFormat, validateBatch]);
+  }, [itemsWithStatus, generateQrForItem, exportFormat, validateBatch, setItemsWithStatus, setGeneratedItems, setGenerateProgress, setIsValidating]);
 
   // Export as ZIP (uses already generated items)
   const handleExportZip = useCallback(async () => {
     if (generatedItems.length === 0) return;
 
-    const result = await generateZip(generatedItems, false);
+    const result = await generateZip(generatedItems, exportFormat, false);
     if (result?.success) {
       console.log('ZIP exported successfully');
     }
-  }, [generatedItems, generateZip]);
+  }, [generatedItems, generateZip, exportFormat]);
 
   // Download individual QR code
   const handleDownloadCurrent = useCallback(async () => {
@@ -362,12 +428,72 @@ export function BatchView() {
 
   const handleClear = useCallback(() => {
     clearBatch();
-    setGeneratedItems([]);
     setGenerateProgress(0);
-  }, [clearBatch]);
+  }, [clearBatch, setGenerateProgress]);
+
+  // Handle format change - reset generation state since files need to be regenerated
+  const handleFormatChange = useCallback((newFormat: ExportFormat) => {
+    if (newFormat === exportFormat) return;
+
+    setExportFormat(newFormat);
+
+    // Reset generation state - items need to be regenerated in the new format
+    if (generatedItems.length > 0) {
+      setGeneratedItems([]);
+      setGenerateProgress(0);
+      // Reset item statuses to 'pending' (keep preview imageData for display)
+      setItemsWithStatus(
+        itemsWithStatus.map((item) => ({
+          ...item,
+          status: 'pending' as ItemStatus,
+          error: undefined,
+        }))
+      );
+    }
+  }, [exportFormat, generatedItems.length, itemsWithStatus, setExportFormat, setGeneratedItems, setGenerateProgress, setItemsWithStatus]);
 
   const allGenerated = generatedItems.length > 0 && generatedItems.length === itemsWithStatus.length;
-  const isProcessing = isLocalGenerating || isGenerating;
+  const isProcessing = isLocalGenerating || isGenerating || isValidating;
+
+  // Helper to render status indicator
+  const renderStatusIndicator = (status: ItemStatus) => {
+    switch (status) {
+      case 'pending':
+        return null;
+      case 'generating':
+        return (
+          <span className="w-3 h-3 border border-accent border-t-transparent rounded-full animate-spin" />
+        );
+      case 'validating':
+        return (
+          <span className="w-3 h-3 border border-yellow-500 border-t-transparent rounded-full animate-spin" />
+        );
+      case 'done':
+        return (
+          <span className="text-blue-500" title="Generated">
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+            </svg>
+          </span>
+        );
+      case 'validated':
+        return (
+          <span className="text-green-500" title="Validated">
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+          </span>
+        );
+      case 'error':
+        return (
+          <span className="text-red-500" title="Error">
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -436,6 +562,7 @@ export function BatchView() {
                   <th className="p-2 font-medium">#</th>
                   <th className="p-2 font-medium">Content</th>
                   <th className="p-2 font-medium">Type</th>
+                  <th className="p-2 font-medium w-10">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -458,6 +585,11 @@ export function BatchView() {
                         {item.qrType}
                       </span>
                     </td>
+                    <td className="p-2">
+                      <div className="flex items-center justify-center" title={item.error}>
+                        {renderStatusIndicator(item.status)}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -473,7 +605,7 @@ export function BatchView() {
               <span className="text-xs text-muted">Format:</span>
               <div className="flex gap-1 flex-1">
                 <button
-                  onClick={() => setExportFormat('png')}
+                  onClick={() => handleFormatChange('png')}
                   disabled={isProcessing}
                   className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     exportFormat === 'png'
@@ -484,7 +616,7 @@ export function BatchView() {
                   PNG
                 </button>
                 <button
-                  onClick={() => setExportFormat('svg')}
+                  onClick={() => handleFormatChange('svg')}
                   disabled={isProcessing}
                   className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     exportFormat === 'svg'
@@ -503,10 +635,15 @@ export function BatchView() {
               disabled={isProcessing}
               className="w-full py-2.5 bg-accent/20 border border-accent/50 text-accent rounded-lg text-sm font-semibold hover:bg-accent/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLocalGenerating ? (
+              {isLocalGenerating && !isValidating ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                   Generating...
+                </span>
+              ) : isValidating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                  Validating...
                 </span>
               ) : (
                 'Generate All'
@@ -608,6 +745,48 @@ export function BatchView() {
                         </span>
                       )}
                     </div>
+
+                    {/* Validation Status Badge */}
+                    {currentPreviewItem.status !== 'pending' && (
+                      <div className="mt-3 flex items-center justify-center gap-1.5">
+                        {currentPreviewItem.status === 'generating' && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent/10 text-accent rounded-full text-[10px] font-medium">
+                            <span className="w-2.5 h-2.5 border border-accent border-t-transparent rounded-full animate-spin" />
+                            Generating...
+                          </span>
+                        )}
+                        {currentPreviewItem.status === 'validating' && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-500/10 text-yellow-500 rounded-full text-[10px] font-medium">
+                            <span className="w-2.5 h-2.5 border border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                            Validating...
+                          </span>
+                        )}
+                        {currentPreviewItem.status === 'done' && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/10 text-blue-500 rounded-full text-[10px] font-medium">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+                            </svg>
+                            Generated
+                          </span>
+                        )}
+                        {currentPreviewItem.status === 'validated' && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-medium">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Validated
+                          </span>
+                        )}
+                        {currentPreviewItem.status === 'error' && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-500/10 text-red-500 rounded-full text-[10px] font-medium" title={currentPreviewItem.error}>
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                            {currentPreviewItem.error || 'Error'}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

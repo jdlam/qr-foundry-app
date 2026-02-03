@@ -244,8 +244,12 @@ fn validate_single_item(item: &BatchGenerateItem) -> BatchValidationResult {
 pub async fn batch_generate_zip(
     app: tauri::AppHandle,
     items: Vec<BatchGenerateItem>,
+    format: String,
     validate: bool,
 ) -> Result<BatchGenerateResult, String> {
+    // Determine file extension
+    let extension = if format == "svg" { "svg" } else { "png" };
+
     // Show save dialog
     let file_path = app
         .dialog()
@@ -289,22 +293,29 @@ pub async fn batch_generate_zip(
             &item.image_data
         };
 
-        // Decode image data
-        let image_bytes = STANDARD
-            .decode(base64_data)
-            .map_err(|e| format!("Failed to decode image for row {}: {}", item.row, e))?;
+        // Decode image data (for SVG, this is the base64-encoded SVG content)
+        let file_bytes = if format == "svg" {
+            // SVG data URL is base64-encoded SVG XML
+            STANDARD
+                .decode(base64_data)
+                .map_err(|e| format!("Failed to decode SVG for row {}: {}", item.row, e))?
+        } else {
+            STANDARD
+                .decode(base64_data)
+                .map_err(|e| format!("Failed to decode image for row {}: {}", item.row, e))?
+        };
 
         // Generate filename
         let filename = if let Some(label) = &item.label {
-            format!("{:03}_{}.png", item.row, sanitize_filename(label))
+            format!("{:03}_{}.{}", item.row, sanitize_filename(label), extension)
         } else {
-            format!("{:03}_qr.png", item.row)
+            format!("{:03}_qr.{}", item.row, extension)
         };
 
         // Add to ZIP
         zip.start_file(&filename, options)
             .map_err(|e| format!("Failed to add file to ZIP: {}", e))?;
-        zip.write_all(&image_bytes)
+        zip.write_all(&file_bytes)
             .map_err(|e| format!("Failed to write to ZIP: {}", e))?;
     }
 
