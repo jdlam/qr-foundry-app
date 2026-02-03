@@ -10,12 +10,13 @@ A powerful desktop QR code generator with live preview, customization, and batch
 
 - **Live Preview** - See your QR code update in real-time as you type
 - **Multiple Input Types** - URL, Text, WiFi, vCard, Email, SMS, Phone, Geo location
-- **Full Customization** - Dot styles, corner styles, colors, gradients, logo embedding
+- **Full Customization** - Dot styles, corner styles, colors, gradients, transparent backgrounds
+- **Smart Logo Embedding** - Drag-drop logos with auto-trimming, resizing, and compression
 - **QR Validation** - Built-in scanner to verify your QR codes are readable
 - **Export Options** - PNG, SVG with native file dialogs
 - **History** - Browse and reload previously generated QR codes
 - **Templates** - Save and reuse your favorite style configurations
-- **Batch Generation** - Import CSV, generate multiple QR codes, export as ZIP
+- **Batch Generation** - Import CSV, preview gallery with keyboard navigation, validate all, export as ZIP
 
 ## Screenshots
 
@@ -63,9 +64,11 @@ The built application will be in `src-tauri/target/release/bundle/`.
 ### Batch Generation
 1. Prepare a CSV file with columns: `content`, `type`, `label`
 2. Drop the CSV file into the Batch tab
-3. Review the parsed items
-4. Click "Generate" to create all QR codes
-5. Save as a ZIP archive
+3. Review the parsed items in the table
+4. Navigate through previews with arrow keys or click thumbnails
+5. Choose export format (PNG or SVG)
+6. Click "Generate All" to create and validate all QR codes
+7. Export as ZIP or download individual codes
 
 ### Templates
 1. Configure your preferred style in the Generator

@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Toast notifications for user feedback across all operations (export, copy, history, templates, scanner)
+- Batch preview gallery with keyboard navigation (arrow keys) and thumbnail selection
+- Batch validation pipeline that verifies generated QR codes are scannable
+- Export format selector (PNG/SVG) for batch generation with automatic regeneration on format change
+- Individual QR code download from batch preview
+- Batch tab state persistence - state survives tab switches
+- Drag-and-drop logo upload with automatic optimization:
+  - Auto-trim transparent borders
+  - Auto-resize to 512px max dimension
+  - Auto-compress under 500KB
+  - Scales logo to 90% of content area
+
+### Fixed
+- Transparent background PNG export now correctly renders with alpha channel
+- Batch preview now shows QR codes immediately when selecting items
+- Logo upload no longer rejects large files - auto-resizes instead
+
+### Technical
 - Initial app implementation with Tauri + React + TypeScript
 - QR code generation for multiple input types:
   - URL, Plain Text, WiFi, vCard, Email, SMS, Phone, Geo

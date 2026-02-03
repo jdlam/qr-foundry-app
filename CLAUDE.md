@@ -80,8 +80,24 @@ After making changes, validate using this checklist:
 
 ### Batch
 - [ ] CSV drop parses rows correctly
-- [ ] Generate creates ZIP with all QRs
+- [ ] Preview gallery shows QR codes
+- [ ] Arrow keys navigate between previews
+- [ ] Format switch (PNG/SVG) resets generation state
+- [ ] Generate creates and validates all QRs
 - [ ] Failed validations show in status column
+- [ ] ZIP export works with toast confirmation
+- [ ] Individual download works from preview
+
+### Logo Upload
+- [ ] Drag-drop image sets logo
+- [ ] Large images auto-resize (max 512px)
+- [ ] Transparent borders auto-trimmed
+- [ ] Files over 500KB auto-compressed
+
+### Toasts
+- [ ] Success toast on export/copy operations
+- [ ] Success toast on history/template load
+- [ ] Error toast on failures
 
 ## Common Issues
 
@@ -138,9 +154,14 @@ npm run test:coverage
 
 Test files are co-located with source files using `.test.ts` or `.test.tsx` suffix:
 - `src/lib/formatters.test.ts` - QR content formatters
-- `src/stores/qrStore.test.ts` - Zustand store
+- `src/lib/imageOptimizer.test.ts` - Logo optimization
+- `src/stores/qrStore.test.ts` - QR state store
+- `src/stores/batchStore.test.ts` - Batch state store
 - `src/hooks/*.test.ts` - Custom React hooks
-- `src/components/**/*.test.tsx` - React components
+- `src/components/generator/*.test.tsx` - Generator components
+- `src/components/history/HistoryView.test.tsx` - History view
+- `src/components/templates/TemplatesView.test.tsx` - Templates view
+- `src/components/scanner/ScannerView.test.tsx` - Scanner view
 
 ### Backend Tests (Rust)
 ```bash
@@ -182,6 +203,7 @@ None currently. All features are enabled.
 - `zustand` - State management
 - `@radix-ui/*` - UI primitives
 - `react-colorful` - Color picker
+- `sonner` - Toast notifications
 
 ### Backend (Rust)
 - `tauri` - Desktop app framework
