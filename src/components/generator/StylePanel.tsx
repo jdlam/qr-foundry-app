@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { readFile } from '@tauri-apps/plugin-fs';
+import { toast } from 'sonner';
 import { useQrStore } from '../../stores/qrStore';
 import { useTauriDragDrop } from '../../hooks/useTauriDragDrop';
 import { optimizeImage, blobToDataUrl } from '../../lib/imageOptimizer';
@@ -118,6 +119,7 @@ export function StylePanel() {
       } catch (err) {
         console.error('Failed to load logo:', err);
         setLogoError('Failed to load file.');
+        toast.error('Failed to load logo');
       }
     },
     [setLogo]
@@ -152,6 +154,7 @@ export function StylePanel() {
       } catch (err) {
         console.error('Failed to load logo:', err);
         setLogoError('Failed to load file.');
+        toast.error('Failed to load logo');
       }
     },
     [setLogo]
@@ -180,6 +183,7 @@ export function StylePanel() {
       } catch (err) {
         console.error('Failed to load logo:', err);
         setLogoError('Failed to load file.');
+        toast.error('Failed to load logo');
       }
     },
     [setLogo]

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useScanQr } from '../../hooks/useValidation';
 import { useExport } from '../../hooks/useExport';
 import { useQrStore } from '../../stores/qrStore';
@@ -107,6 +108,7 @@ export function ScannerView() {
   const handleCopyContent = useCallback(() => {
     if (scanResult?.content) {
       navigator.clipboard.writeText(scanResult.content);
+      toast.success('Copied to clipboard');
     }
   }, [scanResult]);
 
@@ -115,7 +117,7 @@ export function ScannerView() {
       // Load the scanned content into the generator
       const store = useQrStore.getState();
       store.setContent(scanResult.content);
-      // Could also set the input type based on qrType
+      toast.success('Loaded in Generator');
     }
   }, [scanResult]);
 

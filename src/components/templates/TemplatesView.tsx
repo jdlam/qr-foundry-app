@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { useTemplates, type Template } from '../../hooks/useTemplates';
 import { useQrStore } from '../../stores/qrStore';
 
@@ -34,8 +35,9 @@ export function TemplatesView() {
         if (style.gradient) store.setGradient(style.gradient);
         if (style.logo) store.setLogo(style.logo);
         if (style.errorCorrection) store.setErrorCorrection(style.errorCorrection);
+        toast.success(`Applied "${template.name}" template`);
       } catch {
-        console.error('Failed to parse template style');
+        toast.error('Failed to apply template');
       }
     },
     [store]
@@ -63,8 +65,11 @@ export function TemplatesView() {
     });
 
     if (id) {
+      toast.success(`Saved "${newTemplateName.trim()}" template`);
       setNewTemplateName('');
       setIsCreating(false);
+    } else {
+      toast.error('Failed to save template');
     }
   }, [
     newTemplateName,
@@ -75,9 +80,14 @@ export function TemplatesView() {
   const handleDelete = useCallback(
     async (id: number) => {
       if (window.confirm('Are you sure you want to delete this template?')) {
-        await deleteTemplate(id);
-        if (selectedTemplate?.id === id) {
-          setSelectedTemplate(null);
+        const success = await deleteTemplate(id);
+        if (success) {
+          toast.success('Template deleted');
+          if (selectedTemplate?.id === id) {
+            setSelectedTemplate(null);
+          }
+        } else {
+          toast.error('Failed to delete template');
         }
       }
     },
@@ -86,7 +96,12 @@ export function TemplatesView() {
 
   const handleSetDefault = useCallback(
     async (id: number) => {
-      await setDefaultTemplate(id);
+      const success = await setDefaultTemplate(id);
+      if (success) {
+        toast.success('Set as default template');
+      } else {
+        toast.error('Failed to set default template');
+      }
     },
     [setDefaultTemplate]
   );

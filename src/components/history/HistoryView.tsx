@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { useHistory, type HistoryItem } from '../../hooks/useHistory';
 import { useQrStore } from '../../stores/qrStore';
 
@@ -44,8 +45,9 @@ export function HistoryView() {
         if (style.transparentBg !== undefined) store.setTransparentBg(style.transparentBg);
         if (style.logo) store.setLogo(style.logo);
         if (style.errorCorrection) store.setErrorCorrection(style.errorCorrection);
+        toast.success('Loaded in Generator');
       } catch {
-        // Ignore parsing errors
+        toast.error('Failed to load style');
       }
     },
     []
@@ -53,9 +55,12 @@ export function HistoryView() {
 
   const handleDelete = useCallback(
     async (id: number) => {
-      await deleteFromHistory(id);
-      if (selectedItem?.id === id) {
-        setSelectedItem(null);
+      const success = await deleteFromHistory(id);
+      if (success) {
+        toast.success('Deleted from history');
+        if (selectedItem?.id === id) {
+          setSelectedItem(null);
+        }
       }
     },
     [deleteFromHistory, selectedItem]
@@ -63,8 +68,11 @@ export function HistoryView() {
 
   const handleClearAll = useCallback(async () => {
     if (window.confirm('Are you sure you want to clear all history?')) {
-      await clearHistory();
-      setSelectedItem(null);
+      const success = await clearHistory();
+      if (success) {
+        toast.success('History cleared');
+        setSelectedItem(null);
+      }
     }
   }, [clearHistory]);
 
@@ -187,7 +195,10 @@ export function HistoryView() {
                 ◧ Load in Generator
               </button>
               <button
-                onClick={() => navigator.clipboard.writeText(selectedItem.content)}
+                onClick={() => {
+                  navigator.clipboard.writeText(selectedItem.content);
+                  toast.success('Copied to clipboard');
+                }}
                 className="px-4 py-2 bg-surface-hover border border-border rounded-lg text-sm font-semibold hover:bg-border/50 transition-all"
               >
                 📋 Copy

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react';
 import QRCodeStyling from 'qr-code-styling';
+import { toast } from 'sonner';
 import { useBatch, type BatchGenerateItem } from '../../hooks/useBatch';
 import { useQrStore } from '../../stores/qrStore';
 import {
@@ -406,7 +407,9 @@ export function BatchView() {
 
     const result = await generateZip(generatedItems, exportFormat, false);
     if (result?.success) {
-      console.log('ZIP exported successfully');
+      toast.success('ZIP exported successfully');
+    } else {
+      toast.error('Failed to export ZIP');
     }
   }, [generatedItems, generateZip, exportFormat]);
 

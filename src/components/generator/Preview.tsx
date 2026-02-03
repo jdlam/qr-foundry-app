@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { toast } from 'sonner';
 import { useQrGenerator } from '../../hooks/useQrGenerator';
 import { useValidation } from '../../hooks/useValidation';
 import { useExport } from '../../hooks/useExport';
@@ -100,6 +101,7 @@ export function Preview() {
           saveToHistory(dataUrl);
         } catch (error) {
           console.error('Clipboard fallback failed:', error);
+          toast.error('Failed to copy to clipboard');
         }
       }
     }
@@ -114,6 +116,8 @@ export function Preview() {
           setExportSuccess('PNG saved!');
           setTimeout(() => setExportSuccess(null), 2000);
           saveToHistory(dataUrl);
+        } else if (result.error) {
+          toast.error('Failed to export PNG');
         }
       } catch {
         // Fall back to browser download
@@ -144,6 +148,8 @@ export function Preview() {
           setExportSuccess('SVG saved!');
           setTimeout(() => setExportSuccess(null), 2000);
           saveToHistory(dataUrl || undefined);
+        } else if (result.error) {
+          toast.error('Failed to export SVG');
         }
       } catch {
         // Fall back to browser download

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Toaster } from 'sonner';
 import { GeneratorView } from './components/generator/GeneratorView';
 import { ScannerView } from './components/scanner/ScannerView';
 import { HistoryView } from './components/history/HistoryView';
@@ -88,6 +89,18 @@ function App() {
           </button>
         ))}
       </div>
+
+      <Toaster
+        position="bottom-center"
+        toastOptions={{
+          style: {
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            color: 'var(--text)',
+            fontSize: '12px',
+          },
+        }}
+      />
     </div>
   );
 }
