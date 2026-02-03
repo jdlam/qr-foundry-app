@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBatch } from './useBatch';
+import { useBatchStore } from '../stores/batchStore';
 import { invoke } from '@tauri-apps/api/core';
 
 vi.mock('@tauri-apps/api/core');
@@ -19,6 +20,8 @@ const mockGenerateItems = [
 describe('useBatch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset the Zustand store between tests
+    useBatchStore.getState().clear();
   });
 
   it('returns initial state', () => {
@@ -267,11 +270,12 @@ describe('useBatch', () => {
 
       let generateResult: unknown;
       await act(async () => {
-        generateResult = await result.current.generateZip(mockGenerateItems, false);
+        generateResult = await result.current.generateZip(mockGenerateItems, 'png', false);
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('batch_generate_zip', {
         items: mockGenerateItems,
+        format: 'png',
         validate: false,
       });
       expect((generateResult as { success: boolean }).success).toBe(true);
@@ -292,11 +296,12 @@ describe('useBatch', () => {
       const { result } = renderHook(() => useBatch());
 
       await act(async () => {
-        await result.current.generateZip(mockGenerateItems, true);
+        await result.current.generateZip(mockGenerateItems, 'png', true);
       });
 
       expect(mockInvoke).toHaveBeenCalledWith('batch_generate_zip', {
         items: mockGenerateItems,
+        format: 'png',
         validate: true,
       });
       expect(result.current.validationResults.get(1)?.success).toBe(true);
@@ -314,7 +319,7 @@ describe('useBatch', () => {
 
       let generateResult: unknown;
       await act(async () => {
-        generateResult = await result.current.generateZip(mockGenerateItems, false);
+        generateResult = await result.current.generateZip(mockGenerateItems, 'png', false);
       });
 
       expect((generateResult as { success: boolean }).success).toBe(false);
@@ -327,7 +332,7 @@ describe('useBatch', () => {
 
       let generateResult: unknown = { something: true };
       await act(async () => {
-        generateResult = await result.current.generateZip(mockGenerateItems, false);
+        generateResult = await result.current.generateZip(mockGenerateItems, 'png', false);
       });
 
       expect(generateResult).toBeNull();
@@ -343,7 +348,7 @@ describe('useBatch', () => {
       const { result } = renderHook(() => useBatch());
 
       act(() => {
-        result.current.generateZip(mockGenerateItems, false);
+        result.current.generateZip(mockGenerateItems, 'png', false);
       });
 
       expect(result.current.isGenerating).toBe(true);

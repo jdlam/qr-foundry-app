@@ -5,6 +5,28 @@ import { invoke } from '@tauri-apps/api/core';
 import { useQrStore } from '../stores/qrStore';
 
 vi.mock('@tauri-apps/api/core');
+vi.mock('@tauri-apps/plugin-fs');
+vi.mock('jsqr', () => ({
+  default: vi.fn(() => null), // Mock jsqr to return null (no QR found)
+}));
+
+// Mock Image for jsqr fallback tests
+class MockImage {
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  src = '';
+
+  constructor() {
+    // Simulate image load failure in tests (triggers onerror)
+    setTimeout(() => {
+      if (this.onerror) this.onerror();
+    }, 0);
+  }
+}
+
+// @ts-expect-error - mocking global Image
+global.Image = MockImage;
+
 const mockInvoke = vi.mocked(invoke);
 
 describe('useValidation', () => {

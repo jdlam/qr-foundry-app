@@ -1,33 +1,20 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import {
+  useBatchStore,
+  type BatchItem,
+  type BatchGenerateItem,
+  type BatchValidationResult,
+} from '../stores/batchStore';
 
-export interface BatchItem {
-  row: number;
-  content: string;
-  qrType: string;
-  label: string | null;
-}
+// Re-export types for convenience
+export type { BatchItem, BatchGenerateItem, BatchValidationResult };
 
 interface BatchParseResult {
   success: boolean;
   items: BatchItem[];
   error: string | null;
   totalRows: number;
-}
-
-export interface BatchGenerateItem {
-  row: number;
-  content: string;
-  label: string | null;
-  imageData: string;
-}
-
-export interface BatchValidationResult {
-  row: number;
-  success: boolean;
-  decodedContent: string | null;
-  contentMatch: boolean;
-  error: string | null;
 }
 
 interface BatchGenerateResult {
@@ -45,14 +32,21 @@ interface BatchSaveFilesResult {
 }
 
 export function useBatch() {
-  const [items, setItems] = useState<BatchItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [validationResults, setValidationResults] = useState<Map<number, BatchValidationResult>>(
-    new Map()
-  );
+  const {
+    items,
+    isLoading,
+    isParsing,
+    isGenerating,
+    parseError,
+    validationResults,
+    setItems,
+    setIsParsing,
+    setIsGenerating,
+    setIsLoading,
+    setParseError,
+    setValidationResults,
+    clear,
+  } = useBatchStore();
 
   const parseCsvFile = useCallback(async (filePath: string): Promise<boolean> => {
     console.log('[useBatch] parseCsvFile called with:', filePath);
@@ -75,7 +69,7 @@ export function useBatch() {
     } finally {
       setIsParsing(false);
     }
-  }, []);
+  }, [setIsParsing, setParseError, setItems]);
 
   const parseCsvContent = useCallback(async (content: string): Promise<boolean> => {
     console.log('[useBatch] parseCsvContent called, content length:', content.length);
@@ -98,7 +92,7 @@ export function useBatch() {
     } finally {
       setIsParsing(false);
     }
-  }, []);
+  }, [setIsParsing, setParseError, setItems]);
 
   const pickCsvFile = useCallback(async (): Promise<string | null> => {
     try {
@@ -130,18 +124,20 @@ export function useBatch() {
         setIsLoading(false);
       }
     },
-    []
+    [setIsLoading, setValidationResults]
   );
 
   const generateZip = useCallback(
     async (
       generatedItems: BatchGenerateItem[],
+      format: 'png' | 'svg',
       validate: boolean
     ): Promise<BatchGenerateResult | null> => {
       setIsGenerating(true);
       try {
         const result = await invoke<BatchGenerateResult>('batch_generate_zip', {
           items: generatedItems,
+          format,
           validate,
         });
 
@@ -159,7 +155,7 @@ export function useBatch() {
         setIsGenerating(false);
       }
     },
-    []
+    [setIsGenerating, setValidationResults]
   );
 
   const saveFiles = useCallback(
@@ -183,14 +179,12 @@ export function useBatch() {
         setIsGenerating(false);
       }
     },
-    []
+    [setIsGenerating]
   );
 
   const clearBatch = useCallback(() => {
-    setItems([]);
-    setParseError(null);
-    setValidationResults(new Map());
-  }, []);
+    clear();
+  }, [clear]);
 
   return {
     items,
