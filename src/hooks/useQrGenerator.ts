@@ -84,11 +84,9 @@ export function useQrGenerator(containerRef: React.RefObject<HTMLDivElement | nu
           color: foreground,
           gradient: undefined,
         },
-        backgroundOptions: transparentBg
-          ? undefined
-          : {
-              color: background,
-            },
+        backgroundOptions: {
+          color: transparentBg ? 'transparent' : background,
+        },
         image: '',
         imageOptions: {
           hideBackgroundDots: true,

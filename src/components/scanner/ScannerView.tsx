@@ -2,12 +2,36 @@ import { useState, useCallback, useEffect } from 'react';
 import { useScanQr } from '../../hooks/useValidation';
 import { useExport } from '../../hooks/useExport';
 import { useQrStore } from '../../stores/qrStore';
+import { useTauriDragDrop } from '../../hooks/useTauriDragDrop';
 
 export function ScannerView() {
   const { scanFromFile, scanFromData, isScanning, scanResult, clearScan } = useScanQr();
   const { pickImageFile } = useExport();
-  const [isDragging, setIsDragging] = useState(false);
+  const [isHtmlDragging, setIsHtmlDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Handle Tauri native drag-drop (for files dragged from OS file manager)
+  const handleTauriFileDrop = useCallback(
+    async (paths: string[]) => {
+      const filePath = paths[0];
+      if (filePath) {
+        // Check if it's an image file
+        const ext = filePath.toLowerCase().split('.').pop();
+        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(ext || '')) {
+          setError(null);
+          await scanFromFile(filePath);
+        } else {
+          setError('Please drop an image file');
+        }
+      }
+    },
+    [scanFromFile]
+  );
+
+  const { isDragging: isTauriDragging } = useTauriDragDrop(handleTauriFileDrop);
+
+  // Combine both drag states for visual feedback
+  const isDragging = isHtmlDragging || isTauriDragging;
 
   // Clear error when scan result changes
   useEffect(() => {
@@ -37,7 +61,7 @@ export function ScannerView() {
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      setIsDragging(false);
+      setIsHtmlDragging(false);
 
       const file = e.dataTransfer.files[0];
       if (file && file.type.startsWith('image/')) {
@@ -109,9 +133,9 @@ export function ScannerView() {
             onClick={handlePickFile}
             onDragOver={(e) => {
               e.preventDefault();
-              setIsDragging(true);
+              setIsHtmlDragging(true);
             }}
-            onDragLeave={() => setIsDragging(false)}
+            onDragLeave={() => setIsHtmlDragging(false)}
             onDrop={handleDrop}
             className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
               isDragging

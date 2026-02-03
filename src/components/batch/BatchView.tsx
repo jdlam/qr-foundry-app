@@ -42,13 +42,9 @@ export function BatchView() {
   // Handle Tauri native drag-drop (for files dragged from OS file manager)
   const handleTauriFileDrop = useCallback(
     async (paths: string[]) => {
-      console.log('[BatchView] Tauri drop received, paths:', paths);
       const filePath = paths[0];
       if (filePath && (filePath.endsWith('.csv') || filePath.endsWith('.txt'))) {
-        console.log('[BatchView] Valid CSV file, calling parseCsvFile:', filePath);
         await parseCsvFile(filePath);
-      } else {
-        console.log('[BatchView] Invalid file type or no path:', filePath);
       }
     },
     [parseCsvFile]
@@ -56,15 +52,10 @@ export function BatchView() {
 
   const { isDragging: isTauriDragging } = useTauriDragDrop(handleTauriFileDrop);
 
-  // Debug log for drag state changes
-  useEffect(() => {
-    console.log('[BatchView] Drag state - Tauri:', isTauriDragging, 'HTML:', isHtmlDragging);
-  }, [isTauriDragging, isHtmlDragging]);
-
   // Combine both drag states for visual feedback
   const isDragging = isHtmlDragging || isTauriDragging;
 
-  // Sync items with status and reset generated items when CSV changes
+  // Sync items with status
   useEffect(() => {
     setItemsWithStatus(
       items.map((item) => ({
@@ -126,7 +117,6 @@ export function BatchView() {
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsHtmlDragging(false);
-      console.log('[BatchView] HTML drop event received');
 
       const file = e.dataTransfer.files[0];
       console.log('[BatchView] Dropped file:', file?.name, 'files count:', e.dataTransfer.files.length);
