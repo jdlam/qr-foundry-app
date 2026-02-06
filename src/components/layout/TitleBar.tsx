@@ -22,7 +22,7 @@ export function TitleBar() {
         borderBottom: '1px solid var(--border)',
         WebkitAppRegion: 'drag',
         // On macOS with overlay titlebar, leave space for native traffic lights
-        paddingLeft: isMacTauri ? '78px' : '16px',
+        paddingLeft: isMacTauri ? '96px' : '16px',
         paddingRight: '16px',
       } as React.CSSProperties}
     >
