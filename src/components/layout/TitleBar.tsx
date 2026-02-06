@@ -16,7 +16,7 @@ export function TitleBar() {
 
   return (
     <div
-      className="h-[28px] flex items-center shrink-0 relative z-50"
+      className="h-[38px] flex items-center shrink-0 relative z-50"
       style={{
         background: 'var(--titlebar-bg)',
         borderBottom: '1px solid var(--border)',
@@ -27,9 +27,9 @@ export function TitleBar() {
       } as React.CSSProperties}
     >
       {/* Logo + Title */}
-      <div className="flex items-center gap-1.5 font-mono font-semibold text-[12px] tracking-tight" style={{ color: 'var(--text-primary)' }}>
+      <div className="flex items-center gap-2 font-mono font-semibold text-[13px] tracking-tight" style={{ color: 'var(--text-primary)' }}>
         <div
-          className="w-[15px] h-[15px] flex items-center justify-center shrink-0"
+          className="w-4 h-4 flex items-center justify-center shrink-0"
           style={{ background: 'var(--accent)', borderRadius: '1px' }}
         >
           <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[9px] h-[9px]">
@@ -61,7 +61,7 @@ export function TitleBar() {
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="w-6 h-6 flex items-center justify-center rounded-sm transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded-sm transition-colors"
           style={{ color: 'var(--text-muted)', background: 'transparent' }}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = 'var(--text-primary)';
@@ -75,7 +75,7 @@ export function TitleBar() {
         >
           {isDark === 'dark' ? (
             // Sun icon (shown in dark mode — click to go light)
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="5" />
               <line x1="12" y1="1" x2="12" y2="3" />
               <line x1="12" y1="21" x2="12" y2="23" />
@@ -88,7 +88,7 @@ export function TitleBar() {
             </svg>
           ) : (
             // Moon icon (shown in light mode — click to go dark)
-            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
             </svg>
           )}
@@ -98,7 +98,7 @@ export function TitleBar() {
         {isTauri() && !isMacTauri && (
           <div className="flex ml-2">
             <button
-              className="w-6 h-6 flex items-center justify-center rounded-sm transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-sm transition-colors"
               style={{ color: 'var(--text-faint)', background: 'transparent' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--hover-bg)';
@@ -113,7 +113,7 @@ export function TitleBar() {
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" strokeWidth="1.5"/></svg>
             </button>
             <button
-              className="w-6 h-6 flex items-center justify-center rounded-sm transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-sm transition-colors"
               style={{ color: 'var(--text-faint)', background: 'transparent' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--hover-bg)';
@@ -128,7 +128,7 @@ export function TitleBar() {
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2" y="2" width="8" height="8" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg>
             </button>
             <button
-              className="w-6 h-6 flex items-center justify-center rounded-sm transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-sm transition-colors"
               style={{ color: 'var(--text-faint)', background: 'transparent' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'var(--hover-bg)';
