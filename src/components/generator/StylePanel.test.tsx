@@ -2,17 +2,17 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { StylePanel } from './StylePanel';
 import { useQrStore } from '../../stores/qrStore';
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { readFile } from '@tauri-apps/plugin-fs';
+import { dragDropAdapter, filesystemAdapter } from '@platform';
 import { optimizeImage, blobToDataUrl } from '../../lib/imageOptimizer';
+import type { DragDropCallback } from '../../platform/types';
 
-vi.mock('@tauri-apps/api/webviewWindow');
-vi.mock('@tauri-apps/plugin-fs');
 vi.mock('../../lib/imageOptimizer');
 
+const mockListen = vi.mocked(dragDropAdapter.listen);
+const mockReadFile = vi.mocked(filesystemAdapter.readFile);
+
 describe('StylePanel', () => {
-  let mockDragDropHandler: ((event: { payload: { type: string; paths?: string[] } }) => void) | null =
-    null;
+  let mockDragDropHandler: DragDropCallback | null = null;
   let mockUnlisten: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -20,14 +20,12 @@ describe('StylePanel', () => {
     mockDragDropHandler = null;
     mockUnlisten = vi.fn();
 
-    vi.mocked(getCurrentWebviewWindow).mockReturnValue({
-      onDragDropEvent: vi.fn((handler) => {
-        mockDragDropHandler = handler;
-        return Promise.resolve(mockUnlisten);
-      }),
-    } as unknown as ReturnType<typeof getCurrentWebviewWindow>);
+    mockListen.mockImplementation(async (callback) => {
+      mockDragDropHandler = callback;
+      return mockUnlisten as unknown as () => void;
+    });
 
-    vi.mocked(readFile).mockReset();
+    mockReadFile.mockReset();
 
     // Mock image optimizer to return optimized data URL
     vi.mocked(blobToDataUrl).mockImplementation(async (blob: Blob) => {
@@ -320,10 +318,10 @@ describe('StylePanel', () => {
   });
 
   describe('Drag and Drop Logo', () => {
-    it('loads logo when image file is dropped via Tauri drag-drop', async () => {
+    it('loads logo when image file is dropped via drag-drop adapter', async () => {
       // Mock readFile to return fake PNG data
       const fakeImageData = new Uint8Array([137, 80, 78, 71]); // PNG magic bytes
-      vi.mocked(readFile).mockResolvedValue(fakeImageData);
+      mockReadFile.mockResolvedValue(fakeImageData);
 
       render(<StylePanel />);
 
@@ -334,7 +332,7 @@ describe('StylePanel', () => {
 
       // Simulate dropping a PNG file
       await act(async () => {
-        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/logo.png'] } });
+        mockDragDropHandler!({ type: 'drop', paths: ['/path/to/logo.png'] });
       });
 
       // Wait for the logo to be loaded
@@ -343,7 +341,7 @@ describe('StylePanel', () => {
       });
 
       // Verify readFile was called with the correct path
-      expect(readFile).toHaveBeenCalledWith('/path/to/logo.png');
+      expect(mockReadFile).toHaveBeenCalledWith('/path/to/logo.png');
 
       // Verify logo was set with correct properties
       const logo = useQrStore.getState().logo;
@@ -355,7 +353,7 @@ describe('StylePanel', () => {
 
     it('loads JPEG files correctly with proper mime type', async () => {
       const fakeImageData = new Uint8Array([255, 216, 255]); // JPEG magic bytes
-      vi.mocked(readFile).mockResolvedValue(fakeImageData);
+      mockReadFile.mockResolvedValue(fakeImageData);
 
       render(<StylePanel />);
 
@@ -364,7 +362,7 @@ describe('StylePanel', () => {
       });
 
       await act(async () => {
-        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/photo.jpg'] } });
+        mockDragDropHandler!({ type: 'drop', paths: ['/path/to/photo.jpg'] });
       });
 
       await waitFor(() => {
@@ -379,7 +377,7 @@ describe('StylePanel', () => {
     it('loads SVG files correctly with proper mime type', async () => {
       const svgContent = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
       const fakeImageData = new TextEncoder().encode(svgContent);
-      vi.mocked(readFile).mockResolvedValue(fakeImageData);
+      mockReadFile.mockResolvedValue(fakeImageData);
 
       render(<StylePanel />);
 
@@ -388,7 +386,7 @@ describe('StylePanel', () => {
       });
 
       await act(async () => {
-        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/icon.svg'] } });
+        mockDragDropHandler!({ type: 'drop', paths: ['/path/to/icon.svg'] });
       });
 
       await waitFor(() => {
@@ -408,12 +406,12 @@ describe('StylePanel', () => {
 
       // Drop a non-image file
       await act(async () => {
-        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/document.pdf'] } });
+        mockDragDropHandler!({ type: 'drop', paths: ['/path/to/document.pdf'] });
       });
 
       // Logo should not be set
       expect(useQrStore.getState().logo).toBeNull();
-      expect(readFile).not.toHaveBeenCalled();
+      expect(mockReadFile).not.toHaveBeenCalled();
     });
 
     it('shows drag indicator when dragging over app', async () => {
@@ -425,7 +423,7 @@ describe('StylePanel', () => {
 
       // Trigger drag over
       await act(async () => {
-        mockDragDropHandler!({ payload: { type: 'over' } });
+        mockDragDropHandler!({ type: 'over' });
       });
 
       // Should show "Drop to add logo" text
@@ -443,7 +441,7 @@ describe('StylePanel', () => {
 
       // Trigger drag over then leave
       await act(async () => {
-        mockDragDropHandler!({ payload: { type: 'over' } });
+        mockDragDropHandler!({ type: 'over' });
       });
 
       await waitFor(() => {
@@ -451,7 +449,7 @@ describe('StylePanel', () => {
       });
 
       await act(async () => {
-        mockDragDropHandler!({ payload: { type: 'leave' } });
+        mockDragDropHandler!({ type: 'leave' });
       });
 
       await waitFor(() => {
@@ -469,7 +467,7 @@ describe('StylePanel', () => {
       });
 
       const fakeImageData = new Uint8Array([137, 80, 78, 71]);
-      vi.mocked(readFile).mockResolvedValue(fakeImageData);
+      mockReadFile.mockResolvedValue(fakeImageData);
 
       render(<StylePanel />);
 
@@ -479,7 +477,7 @@ describe('StylePanel', () => {
 
       // Drop a new file
       await act(async () => {
-        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/newlogo.png'] } });
+        mockDragDropHandler!({ type: 'drop', paths: ['/path/to/newlogo.png'] });
       });
 
       await waitFor(() => {
@@ -492,7 +490,7 @@ describe('StylePanel', () => {
     });
 
     it('handles file read errors gracefully', async () => {
-      vi.mocked(readFile).mockRejectedValue(new Error('File not found'));
+      mockReadFile.mockRejectedValue(new Error('File not found'));
 
       // Spy on console.error
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -504,7 +502,7 @@ describe('StylePanel', () => {
       });
 
       await act(async () => {
-        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/missing.png'] } });
+        mockDragDropHandler!({ type: 'drop', paths: ['/path/to/missing.png'] });
       });
 
       await waitFor(() => {
@@ -520,7 +518,7 @@ describe('StylePanel', () => {
     it('automatically resizes large files instead of rejecting', async () => {
       // Create a mock large file - should be resized, not rejected
       const largeFileData = new Uint8Array(600 * 1024); // 600KB
-      vi.mocked(readFile).mockResolvedValue(largeFileData);
+      mockReadFile.mockResolvedValue(largeFileData);
 
       render(<StylePanel />);
 
@@ -529,7 +527,7 @@ describe('StylePanel', () => {
       });
 
       await act(async () => {
-        mockDragDropHandler!({ payload: { type: 'drop', paths: ['/path/to/large-logo.png'] } });
+        mockDragDropHandler!({ type: 'drop', paths: ['/path/to/large-logo.png'] });
       });
 
       // Logo should be set (auto-resized)

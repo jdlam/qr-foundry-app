@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { batchAdapter, filesystemAdapter } from '@platform';
 import {
   useBatchStore,
   type BatchItem,
@@ -9,27 +9,6 @@ import {
 
 // Re-export types for convenience
 export type { BatchItem, BatchGenerateItem, BatchValidationResult };
-
-interface BatchParseResult {
-  success: boolean;
-  items: BatchItem[];
-  error: string | null;
-  totalRows: number;
-}
-
-interface BatchGenerateResult {
-  success: boolean;
-  zipPath: string | null;
-  validationResults: BatchValidationResult[];
-  error: string | null;
-}
-
-interface BatchSaveFilesResult {
-  success: boolean;
-  directory: string | null;
-  filesSaved: number;
-  error: string | null;
-}
 
 export function useBatch() {
   const {
@@ -53,7 +32,7 @@ export function useBatch() {
     setIsParsing(true);
     setParseError(null);
     try {
-      const result = await invoke<BatchParseResult>('batch_parse_csv', { filePath });
+      const result = await batchAdapter.parseCsvFile(filePath);
       console.log('[useBatch] parseCsvFile result:', result);
       if (result.success) {
         setItems(result.items);
@@ -76,7 +55,7 @@ export function useBatch() {
     setIsParsing(true);
     setParseError(null);
     try {
-      const result = await invoke<BatchParseResult>('batch_parse_csv_content', { content });
+      const result = await batchAdapter.parseCsvContent(content);
       console.log('[useBatch] parseCsvContent result:', result);
       if (result.success) {
         setItems(result.items);
@@ -96,7 +75,7 @@ export function useBatch() {
 
   const pickCsvFile = useCallback(async (): Promise<string | null> => {
     try {
-      const result = await invoke<string | null>('pick_csv_file');
+      const result = await filesystemAdapter.pickCsvFile();
       return result;
     } catch (error) {
       console.error('Failed to pick CSV file:', error);
@@ -108,9 +87,7 @@ export function useBatch() {
     async (generatedItems: BatchGenerateItem[]): Promise<BatchValidationResult[]> => {
       setIsLoading(true);
       try {
-        const results = await invoke<BatchValidationResult[]>('batch_validate', {
-          items: generatedItems,
-        });
+        const results = await batchAdapter.validateBatch(generatedItems);
 
         const resultsMap = new Map<number, BatchValidationResult>();
         results.forEach((r) => resultsMap.set(r.row, r));
@@ -132,14 +109,10 @@ export function useBatch() {
       generatedItems: BatchGenerateItem[],
       format: 'png' | 'svg',
       validate: boolean
-    ): Promise<BatchGenerateResult | null> => {
+    ) => {
       setIsGenerating(true);
       try {
-        const result = await invoke<BatchGenerateResult>('batch_generate_zip', {
-          items: generatedItems,
-          format,
-          validate,
-        });
+        const result = await batchAdapter.generateZip(generatedItems, format, validate);
 
         if (result.validationResults.length > 0) {
           const resultsMap = new Map<number, BatchValidationResult>();
@@ -163,14 +136,10 @@ export function useBatch() {
       generatedItems: BatchGenerateItem[],
       format: 'png' | 'svg',
       baseName: string = 'qr-code'
-    ): Promise<BatchSaveFilesResult | null> => {
+    ) => {
       setIsGenerating(true);
       try {
-        const result = await invoke<BatchSaveFilesResult>('batch_save_files', {
-          items: generatedItems,
-          format,
-          baseName,
-        });
+        const result = await batchAdapter.saveFiles(generatedItems, format, baseName);
         return result;
       } catch (error) {
         console.error('Failed to save files:', error);

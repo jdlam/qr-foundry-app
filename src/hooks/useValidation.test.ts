@@ -1,33 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useValidation, useScanQr } from './useValidation';
-import { invoke } from '@tauri-apps/api/core';
+import { scannerAdapter } from '@platform';
 import { useQrStore } from '../stores/qrStore';
 
-vi.mock('@tauri-apps/api/core');
-vi.mock('@tauri-apps/plugin-fs');
-vi.mock('jsqr', () => ({
-  default: vi.fn(() => null), // Mock jsqr to return null (no QR found)
-}));
-
-// Mock Image for jsqr fallback tests
-class MockImage {
-  onload: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  src = '';
-
-  constructor() {
-    // Simulate image load failure in tests (triggers onerror)
-    setTimeout(() => {
-      if (this.onerror) this.onerror();
-    }, 0);
-  }
-}
-
-// @ts-expect-error - mocking global Image
-global.Image = MockImage;
-
-const mockInvoke = vi.mocked(invoke);
+const mockValidateQr = vi.mocked(scannerAdapter.validateQr);
+const mockScanFromFile = vi.mocked(scannerAdapter.scanFromFile);
+const mockScanFromData = vi.mocked(scannerAdapter.scanFromData);
 
 describe('useValidation', () => {
   beforeEach(() => {
@@ -55,9 +34,9 @@ describe('useValidation', () => {
     expect(useQrStore.getState().validationState).toBe('fail');
   });
 
-  it('calls validate_qr and updates state on success', async () => {
+  it('calls scannerAdapter.validateQr and updates state on success', async () => {
     useQrStore.getState().setContent('https://example.com');
-    mockInvoke.mockResolvedValueOnce({
+    mockValidateQr.mockResolvedValueOnce({
       state: 'pass',
       decodedContent: 'https://example.com',
       contentMatch: true,
@@ -71,10 +50,7 @@ describe('useValidation', () => {
       await result.current.validate('data:image/png;base64,abc');
     });
 
-    expect(mockInvoke).toHaveBeenCalledWith('validate_qr', {
-      imageData: 'data:image/png;base64,abc',
-      expectedContent: 'https://example.com',
-    });
+    expect(mockValidateQr).toHaveBeenCalledWith('data:image/png;base64,abc', 'https://example.com');
     expect(result.current.result?.state).toBe('pass');
     expect(result.current.isValidating).toBe(false);
     expect(useQrStore.getState().validationState).toBe('pass');
@@ -82,7 +58,7 @@ describe('useValidation', () => {
 
   it('handles validation failure', async () => {
     useQrStore.getState().setContent('test content');
-    mockInvoke.mockResolvedValueOnce({
+    mockValidateQr.mockResolvedValueOnce({
       state: 'fail',
       decodedContent: null,
       contentMatch: false,
@@ -103,7 +79,7 @@ describe('useValidation', () => {
 
   it('handles API error gracefully', async () => {
     useQrStore.getState().setContent('test content');
-    mockInvoke.mockRejectedValueOnce(new Error('Network error'));
+    mockValidateQr.mockRejectedValueOnce(new Error('Network error'));
 
     const { result } = renderHook(() => useValidation());
 
@@ -122,7 +98,7 @@ describe('useValidation', () => {
     const pendingPromise = new Promise((resolve) => {
       resolvePromise = resolve;
     });
-    mockInvoke.mockReturnValueOnce(pendingPromise as Promise<unknown>);
+    mockValidateQr.mockReturnValueOnce(pendingPromise as Promise<never>);
 
     const { result } = renderHook(() => useValidation());
 
@@ -152,7 +128,7 @@ describe('useValidation', () => {
 
   it('resetValidation clears result and state', async () => {
     useQrStore.getState().setContent('test');
-    mockInvoke.mockResolvedValueOnce({
+    mockValidateQr.mockResolvedValueOnce({
       state: 'pass',
       decodedContent: 'test',
       contentMatch: true,
@@ -189,8 +165,8 @@ describe('useScanQr', () => {
     expect(result.current.scanResult).toBeNull();
   });
 
-  it('scanFromFile calls scan_qr_from_file', async () => {
-    mockInvoke.mockResolvedValueOnce({
+  it('scanFromFile calls scannerAdapter.scanFromFile', async () => {
+    mockScanFromFile.mockResolvedValueOnce({
       success: true,
       content: 'https://example.com',
       qrType: 'url',
@@ -203,16 +179,14 @@ describe('useScanQr', () => {
       await result.current.scanFromFile('/path/to/qr.png');
     });
 
-    expect(mockInvoke).toHaveBeenCalledWith('scan_qr_from_file', {
-      filePath: '/path/to/qr.png',
-    });
+    expect(mockScanFromFile).toHaveBeenCalledWith('/path/to/qr.png');
     expect(result.current.scanResult?.success).toBe(true);
     expect(result.current.scanResult?.content).toBe('https://example.com');
     expect(result.current.scanResult?.qrType).toBe('url');
   });
 
-  it('scanFromData calls scan_qr_from_data', async () => {
-    mockInvoke.mockResolvedValueOnce({
+  it('scanFromData calls scannerAdapter.scanFromData', async () => {
+    mockScanFromData.mockResolvedValueOnce({
       success: true,
       content: 'tel:+15551234567',
       qrType: 'phone',
@@ -225,14 +199,12 @@ describe('useScanQr', () => {
       await result.current.scanFromData('data:image/png;base64,abc');
     });
 
-    expect(mockInvoke).toHaveBeenCalledWith('scan_qr_from_data', {
-      imageData: 'data:image/png;base64,abc',
-    });
+    expect(mockScanFromData).toHaveBeenCalledWith('data:image/png;base64,abc');
     expect(result.current.scanResult?.qrType).toBe('phone');
   });
 
   it('handles scan failure', async () => {
-    mockInvoke.mockResolvedValueOnce({
+    mockScanFromFile.mockResolvedValueOnce({
       success: false,
       content: null,
       qrType: null,
@@ -250,7 +222,7 @@ describe('useScanQr', () => {
   });
 
   it('handles API error', async () => {
-    mockInvoke.mockRejectedValueOnce(new Error('File not found'));
+    mockScanFromFile.mockRejectedValueOnce(new Error('File not found'));
 
     const { result } = renderHook(() => useScanQr());
 
@@ -263,7 +235,7 @@ describe('useScanQr', () => {
   });
 
   it('clearScan resets scanResult', async () => {
-    mockInvoke.mockResolvedValueOnce({
+    mockScanFromData.mockResolvedValueOnce({
       success: true,
       content: 'test',
       qrType: 'text',
@@ -290,7 +262,7 @@ describe('useScanQr', () => {
     const pendingPromise = new Promise((resolve) => {
       resolvePromise = resolve;
     });
-    mockInvoke.mockReturnValueOnce(pendingPromise as Promise<unknown>);
+    mockScanFromData.mockReturnValueOnce(pendingPromise as Promise<never>);
 
     const { result } = renderHook(() => useScanQr());
 

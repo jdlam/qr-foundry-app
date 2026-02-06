@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
-import { readFile } from '@tauri-apps/plugin-fs';
+import { filesystemAdapter } from '@platform';
 import { toast } from 'sonner';
 import { useQrStore } from '../../stores/qrStore';
 import { useTauriDragDrop } from '../../hooks/useTauriDragDrop';
@@ -99,7 +99,7 @@ export function StylePanel() {
       }
 
       try {
-        const data = await readFile(filePath);
+        const data = await filesystemAdapter.readFile(filePath);
         const mimeType = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
 
         // Convert Uint8Array to data URL

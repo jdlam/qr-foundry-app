@@ -3,16 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { Preview } from './Preview';
 import { useQrStore } from '../../stores/qrStore';
 
-// Mock all Tauri APIs
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(),
-}));
-
-vi.mock('@tauri-apps/plugin-dialog', () => ({
-  save: vi.fn(),
-}));
-
-// Mock the hooks that use Tauri
+// Mock the hooks that use platform adapters
 vi.mock('../../hooks/useQrGenerator', () => ({
   useQrGenerator: () => ({
     getDataUrl: vi.fn().mockResolvedValue('data:image/png;base64,test'),

@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTemplates } from './useTemplates';
-import { invoke } from '@tauri-apps/api/core';
+import { templateAdapter } from '@platform';
 
-vi.mock('@tauri-apps/api/core');
-const mockInvoke = vi.mocked(invoke);
+const mockList = vi.mocked(templateAdapter.list);
+const mockGet = vi.mocked(templateAdapter.get);
+const mockSave = vi.mocked(templateAdapter.save);
+const mockUpdate = vi.mocked(templateAdapter.update);
+const mockDeleteTemplate = vi.mocked(templateAdapter.delete);
+const mockSetDefault = vi.mocked(templateAdapter.setDefault);
 
 const mockTemplates = [
   {
@@ -39,7 +43,7 @@ describe('useTemplates', () => {
 
   describe('fetchTemplates', () => {
     it('fetches all templates', async () => {
-      mockInvoke.mockResolvedValueOnce(mockTemplates);
+      mockList.mockResolvedValueOnce(mockTemplates);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -47,13 +51,13 @@ describe('useTemplates', () => {
         await result.current.fetchTemplates();
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('template_list');
+      expect(mockList).toHaveBeenCalled();
       expect(result.current.templates).toHaveLength(2);
       expect(result.current.templates[0].name).toBe('Classic');
     });
 
     it('handles fetch error gracefully', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Database error'));
+      mockList.mockRejectedValueOnce(new Error('Database error'));
 
       const { result } = renderHook(() => useTemplates());
 
@@ -69,7 +73,7 @@ describe('useTemplates', () => {
       const pendingPromise = new Promise((resolve) => {
         resolvePromise = resolve;
       });
-      mockInvoke.mockReturnValueOnce(pendingPromise as Promise<unknown>);
+      mockList.mockReturnValueOnce(pendingPromise as Promise<never>);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -90,7 +94,7 @@ describe('useTemplates', () => {
 
   describe('getTemplate', () => {
     it('gets template by ID', async () => {
-      mockInvoke.mockResolvedValueOnce(mockTemplates[0]);
+      mockGet.mockResolvedValueOnce(mockTemplates[0]);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -99,12 +103,12 @@ describe('useTemplates', () => {
         template = await result.current.getTemplate(1);
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('template_get', { id: 1 });
+      expect(mockGet).toHaveBeenCalledWith(1);
       expect(template).toEqual(mockTemplates[0]);
     });
 
     it('returns null for non-existent template', async () => {
-      mockInvoke.mockResolvedValueOnce(null);
+      mockGet.mockResolvedValueOnce(null);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -117,7 +121,7 @@ describe('useTemplates', () => {
     });
 
     it('returns null on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Not found'));
+      mockGet.mockRejectedValueOnce(new Error('Not found'));
 
       const { result } = renderHook(() => useTemplates());
 
@@ -132,9 +136,8 @@ describe('useTemplates', () => {
 
   describe('saveTemplate', () => {
     it('saves template and refreshes list', async () => {
-      mockInvoke
-        .mockResolvedValueOnce(3) // template_save returns new ID
-        .mockResolvedValueOnce([...mockTemplates, { ...mockTemplates[0], id: 3, name: 'New' }]);
+      mockSave.mockResolvedValueOnce(3);
+      mockList.mockResolvedValueOnce([...mockTemplates, { ...mockTemplates[0], id: 3, name: 'New' }]);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -146,14 +149,12 @@ describe('useTemplates', () => {
         });
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('template_save', {
-        template: { name: 'New', styleJson: '{}' },
-      });
+      expect(mockSave).toHaveBeenCalledWith({ name: 'New', styleJson: '{}' });
       expect(newId).toBe(3);
     });
 
     it('returns null on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Save failed'));
+      mockSave.mockRejectedValueOnce(new Error('Save failed'));
 
       const { result } = renderHook(() => useTemplates());
 
@@ -171,9 +172,8 @@ describe('useTemplates', () => {
 
   describe('updateTemplate', () => {
     it('updates template and refreshes list', async () => {
-      mockInvoke
-        .mockResolvedValueOnce(true) // template_update
-        .mockResolvedValueOnce(mockTemplates);
+      mockUpdate.mockResolvedValueOnce(true);
+      mockList.mockResolvedValueOnce(mockTemplates);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -185,15 +185,12 @@ describe('useTemplates', () => {
         });
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('template_update', {
-        id: 1,
-        template: { name: 'Updated', styleJson: '{}' },
-      });
+      expect(mockUpdate).toHaveBeenCalledWith(1, { name: 'Updated', styleJson: '{}' });
       expect(success).toBe(true);
     });
 
     it('returns false on failed update', async () => {
-      mockInvoke.mockResolvedValueOnce(false);
+      mockUpdate.mockResolvedValueOnce(false);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -209,7 +206,7 @@ describe('useTemplates', () => {
     });
 
     it('returns false on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Update failed'));
+      mockUpdate.mockRejectedValueOnce(new Error('Update failed'));
 
       const { result } = renderHook(() => useTemplates());
 
@@ -227,7 +224,7 @@ describe('useTemplates', () => {
 
   describe('deleteTemplate', () => {
     it('deletes template and updates local state', async () => {
-      mockInvoke.mockResolvedValueOnce(mockTemplates);
+      mockList.mockResolvedValueOnce(mockTemplates);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -235,21 +232,21 @@ describe('useTemplates', () => {
         await result.current.fetchTemplates();
       });
 
-      mockInvoke.mockResolvedValueOnce(true);
+      mockDeleteTemplate.mockResolvedValueOnce(true);
 
       let success: boolean = false;
       await act(async () => {
         success = await result.current.deleteTemplate(1);
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('template_delete', { id: 1 });
+      expect(mockDeleteTemplate).toHaveBeenCalledWith(1);
       expect(success).toBe(true);
       expect(result.current.templates).toHaveLength(1);
       expect(result.current.templates[0].id).toBe(2);
     });
 
     it('does not update state on failed delete', async () => {
-      mockInvoke.mockResolvedValueOnce(mockTemplates);
+      mockList.mockResolvedValueOnce(mockTemplates);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -257,7 +254,7 @@ describe('useTemplates', () => {
         await result.current.fetchTemplates();
       });
 
-      mockInvoke.mockResolvedValueOnce(false);
+      mockDeleteTemplate.mockResolvedValueOnce(false);
 
       let success: boolean = true;
       await act(async () => {
@@ -269,7 +266,7 @@ describe('useTemplates', () => {
     });
 
     it('returns false on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Delete failed'));
+      mockDeleteTemplate.mockRejectedValueOnce(new Error('Delete failed'));
 
       const { result } = renderHook(() => useTemplates());
 
@@ -284,7 +281,7 @@ describe('useTemplates', () => {
 
   describe('setDefaultTemplate', () => {
     it('sets default and updates local state', async () => {
-      mockInvoke.mockResolvedValueOnce(mockTemplates);
+      mockList.mockResolvedValueOnce(mockTemplates);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -292,21 +289,21 @@ describe('useTemplates', () => {
         await result.current.fetchTemplates();
       });
 
-      mockInvoke.mockResolvedValueOnce(true);
+      mockSetDefault.mockResolvedValueOnce(true);
 
       let success: boolean = false;
       await act(async () => {
         success = await result.current.setDefaultTemplate(2);
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('template_set_default', { id: 2 });
+      expect(mockSetDefault).toHaveBeenCalledWith(2);
       expect(success).toBe(true);
       expect(result.current.templates.find((t) => t.id === 1)?.isDefault).toBe(false);
       expect(result.current.templates.find((t) => t.id === 2)?.isDefault).toBe(true);
     });
 
     it('does not update state on failed set default', async () => {
-      mockInvoke.mockResolvedValueOnce(mockTemplates);
+      mockList.mockResolvedValueOnce(mockTemplates);
 
       const { result } = renderHook(() => useTemplates());
 
@@ -314,7 +311,7 @@ describe('useTemplates', () => {
         await result.current.fetchTemplates();
       });
 
-      mockInvoke.mockResolvedValueOnce(false);
+      mockSetDefault.mockResolvedValueOnce(false);
 
       await act(async () => {
         await result.current.setDefaultTemplate(2);
@@ -325,7 +322,7 @@ describe('useTemplates', () => {
     });
 
     it('returns false on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Set default failed'));
+      mockSetDefault.mockRejectedValueOnce(new Error('Set default failed'));
 
       const { result } = renderHook(() => useTemplates());
 

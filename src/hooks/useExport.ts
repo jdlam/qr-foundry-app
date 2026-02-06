@@ -1,11 +1,8 @@
 import { useCallback, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { exportAdapter, clipboardAdapter, filesystemAdapter } from '@platform';
+import type { ExportResult } from '../platform/types';
 
-interface ExportResult {
-  success: boolean;
-  path: string | null;
-  error: string | null;
-}
+export type { ExportResult };
 
 export function useExport() {
   const [isExporting, setIsExporting] = useState(false);
@@ -15,10 +12,7 @@ export function useExport() {
     async (imageDataUrl: string, suggestedName?: string): Promise<ExportResult> => {
       setIsExporting(true);
       try {
-        const result = await invoke<ExportResult>('export_png', {
-          imageData: imageDataUrl,
-          suggestedName: suggestedName || 'qr-code.png',
-        });
+        const result = await exportAdapter.exportPng(imageDataUrl, suggestedName);
 
         if (result.success && result.path) {
           setLastExportPath(result.path);
@@ -43,10 +37,7 @@ export function useExport() {
     async (svgData: string, suggestedName?: string): Promise<ExportResult> => {
       setIsExporting(true);
       try {
-        const result = await invoke<ExportResult>('export_svg', {
-          svgData,
-          suggestedName: suggestedName || 'qr-code.svg',
-        });
+        const result = await exportAdapter.exportSvg(svgData, suggestedName);
 
         if (result.success && result.path) {
           setLastExportPath(result.path);
@@ -69,9 +60,7 @@ export function useExport() {
 
   const copyToClipboard = useCallback(async (imageDataUrl: string): Promise<boolean> => {
     try {
-      await invoke<boolean>('copy_image_to_clipboard', {
-        imageData: imageDataUrl,
-      });
+      await clipboardAdapter.copyImage(imageDataUrl);
       return true;
     } catch (error) {
       console.error('Copy to clipboard error:', error);
@@ -81,7 +70,7 @@ export function useExport() {
 
   const pickImageFile = useCallback(async (): Promise<string | null> => {
     try {
-      const result = await invoke<string | null>('pick_image_file');
+      const result = await filesystemAdapter.pickImageFile();
       return result;
     } catch (error) {
       console.error('Pick file error:', error);
