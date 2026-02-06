@@ -1,6 +1,36 @@
 # QR Foundry
 
-A Tauri-based desktop QR code generator with React + TypeScript frontend.
+A QR code generator shipping as both a **Tauri desktop app** (macOS, Windows, Linux)
+and a **web app** (`app.qr-foundry.com`). React + TypeScript frontend shared between
+both targets; Rust backend for desktop-only features.
+
+## System Architecture
+
+QR Foundry is composed of five services. See `plans/ARCHITECTURE.md` for the full system diagram.
+
+| Service | Domain | Repo | Stack |
+|---------|--------|------|-------|
+| Desktop App | downloadable | `qr-foundry` (this repo) | Tauri + React |
+| Web App | `app.qr-foundry.com` | `qr-foundry` (this repo, separate build target) | React (no Tauri) |
+| Redirect Worker | `qrfo.link` | `qr-foundry-worker` | Cloudflare Worker + KV |
+| Billing API | `api.qr-foundry.com` | `qr-foundry-api` (not yet created) | TBD |
+| Marketing Site | `qr-foundry.com` | `qr-foundry-site` (not yet created) | Static (Astro/Next.js) |
+
+### How they connect
+
+- **Desktop/Web App → Billing API** — auth (login/signup), plan tier checks, subscription management
+- **Desktop/Web App → Worker CRUD API** — create, list, update, delete dynamic QR codes
+- **Billing API → Worker KV** — writes `_quota::` keys after purchase/subscription events
+- **Browser (scan) → Worker Redirect** — public 302 redirects for scanned QR codes
+
+### Pricing tiers
+
+| Tier | Price | Key features |
+|------|-------|--------------|
+| Free | $0 | Basic QR types, basic colors, PNG export, clipboard, scanner, limited history (10) |
+| Pro Trial | $0 / 7 days | All Pro features for 7 days after signup. Reverts to Free. |
+| Pro | ~$12-15 one-time | Full customization, all export formats, batch, templates, unlimited history |
+| Subscription | ~$5-7/month | Everything in Pro + dynamic QR codes, scan analytics, code management (25 active codes) |
 
 ## Quick Start
 
@@ -8,8 +38,11 @@ A Tauri-based desktop QR code generator with React + TypeScript frontend.
 # Install dependencies
 npm install
 
-# Run development server
+# Run desktop app (Tauri)
 npm run tauri dev
+
+# Run web app (browser only — no Tauri needed)
+npm run dev:web          # planned, not yet implemented
 
 # Type check
 npm run typecheck
@@ -17,28 +50,98 @@ npm run typecheck
 # Lint
 npm run lint
 
-# Build for production
+# Build desktop for production
 npm run tauri build
+
+# Build web for production
+npm run build:web        # planned, not yet implemented
 ```
 
 ## Project Structure
 
 ```text
 qr-foundry/
-├── src/                    # React frontend
-│   ├── components/         # UI components by feature
-│   ├── hooks/              # Custom React hooks
-│   ├── stores/             # Zustand state stores
-│   ├── lib/                # Utility functions
-│   ├── types/              # TypeScript definitions
-│   └── styles/             # CSS/Tailwind
-├── src-tauri/              # Rust backend
+├── src/                        # React frontend (shared between desktop + web)
+│   ├── App.tsx                 # Root layout + routing
+│   ├── main.tsx                # React entry
+│   ├── components/             # UI components by feature
+│   │   ├── layout/             # Sidebar, TitleBar, StatusBar
+│   │   ├── generator/          # InputPanel, StylePanel, Preview, ExportBar
+│   │   │   └── inputs/         # Per-type input components (URL, WiFi, vCard, etc.)
+│   │   ├── batch/              # BatchView, CsvDropzone, BatchTable
+│   │   ├── scanner/            # ScannerView, DecodeResult
+│   │   ├── history/            # HistoryView, HistoryItem
+│   │   ├── templates/          # TemplatesView, TemplateCard
+│   │   ├── dynamic/            # DynamicCodesView, CodeDetailView, AnalyticsView (planned)
+│   │   ├── web-assets/         # WebAssetView (planned)
+│   │   └── shared/             # ColorPicker, DotStylePicker, LogoUploader, FeatureGate
+│   ├── hooks/                  # Custom React hooks
+│   ├── stores/                 # Zustand state stores
+│   ├── lib/                    # Utility functions (formatters, validators, image optimizer)
+│   ├── types/                  # TypeScript definitions
+│   ├── styles/                 # CSS/Tailwind
+│   ├── api/                    # Shared API clients (planned)
+│   │   ├── billing.ts          # Billing API client (auth, plan, purchases)
+│   │   └── worker.ts           # Worker API client (CRUD, analytics)
+│   └── platform/               # Platform-specific adapters (planned)
+│       ├── tauri/              # OS keychain, native file dialogs, Tauri clipboard
+│       └── web/                # Cookie/localStorage auth, browser download, Clipboard API
+├── src-tauri/                  # Rust backend (desktop only)
 │   ├── src/
-│   │   ├── commands/       # Tauri IPC commands
-│   │   └── db/             # SQLite database
+│   │   ├── main.rs             # Tauri entry point
+│   │   ├── lib.rs              # Module registration
+│   │   ├── commands/           # Tauri IPC commands (export, validate, batch, scanner, etc.)
+│   │   └── db/                 # SQLite database (history, templates)
 │   └── Cargo.toml
-└── CLAUDE.md               # This file
+├── plans/                      # Architecture and implementation plans
+│   ├── ARCHITECTURE.md         # System-wide architecture and service interactions
+│   ├── app.md                  # Desktop + Web App implementation phases
+│   ├── worker.md               # Redirect Worker implementation phases
+│   ├── billing-api.md          # Billing API implementation phases
+│   ├── marketing-site.md       # Marketing site implementation phases
+│   └── qr-foundry-app-spec.md  # Full product specification
+└── CLAUDE.md                   # This file
 ```
+
+### Code sharing: Desktop + Web
+
+The same React codebase builds for both Tauri (desktop) and browser (web). Platform differences are abstracted behind adapters in `src/platform/`:
+
+| Concern | Desktop (Tauri) | Web (Browser) |
+|---------|----------------|---------------|
+| Auth token storage | OS keychain via Tauri secure storage | `httpOnly` cookie or `localStorage` |
+| File export | Native file dialogs via Tauri | Browser download API |
+| Clipboard | Tauri clipboard API | Browser Clipboard API |
+| QR scanning | Image file via Tauri | Browser `MediaDevices` API (later) |
+
+Vite path aliases (`@platform/*`) resolve to the correct platform at build time.
+
+## Current Status
+
+### Desktop App: Core (complete)
+
+- [x] Tauri project scaffold with React + TypeScript
+- [x] QR generation (URL, text, WiFi, phone, vCard, email, SMS, geo, calendar)
+- [x] Live preview canvas
+- [x] Style customization (colors, dots, eyes, gradient fills)
+- [x] Logo embedding with drag-drop
+- [x] Error correction manual control
+- [x] Transparent backgrounds
+- [x] PNG export with native save dialog
+- [x] SVG export via Rust backend
+- [x] Clipboard copy
+- [x] Batch generation from CSV
+- [x] History (SQLite)
+- [x] Templates (save/load styles)
+- [x] QR scanner/decoder
+- [x] QR validation (scan and verify content matches)
+
+### Remaining work (see `plans/` for details)
+
+- **App** — Auth integration, feature gating, dynamic code UI, analytics dashboard, platform abstraction, web build. See `plans/app.md`.
+- **Worker** — Quota enforcement, scan analytics API, infrastructure. See `plans/worker.md`.
+- **Billing API** — Scaffold, auth, trial management, Stripe, quota management, plan tier API. See `plans/billing-api.md`.
+- **Marketing Site** — Landing page, pricing, SEO, deployment. See `plans/marketing-site.md`.
 
 ## Validation Checklist
 
@@ -104,9 +207,9 @@ After making changes, validate using this checklist:
 
 ### Toasts
 
-- [ ] Success toast on export/copy operations
-- [ ] Success toast on history/template load
-- [ ] Error toast on failures
+- [x] Success feedback on export/copy operations (inline visual state in Preview, toasts elsewhere)
+- [x] Success toast on history/template load
+- [x] Error toast on failures
 
 ## Common Issues
 
@@ -215,10 +318,6 @@ Tests are in `#[cfg(test)]` modules within source files:
 
 Use the validation checklist above after each change.
 
-## Feature Flags
-
-None currently. All features are enabled.
-
 ## Dependencies
 
 ### Frontend
@@ -237,3 +336,13 @@ None currently. All features are enabled.
 - `image` - Image processing
 - `rusqlite` - SQLite database
 - `csv` - CSV parsing for batch
+
+### External Services (planned)
+
+- **Cloudflare Workers + KV** - Dynamic QR code redirects and CRUD
+- **Cloudflare Analytics Engine** - Scan analytics
+- **Stripe** - Payment processing (Pro purchases, subscriptions)
+
+## Feature Flags
+
+None currently. Feature gating by plan tier is planned (see `plans/app.md` Phase 2).
