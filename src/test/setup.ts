@@ -1,27 +1,47 @@
 import '@testing-library/jest-dom/vitest';
 
-// Mock Tauri APIs for testing
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(),
-}));
-
-vi.mock('@tauri-apps/plugin-dialog', () => ({
-  save: vi.fn(),
-  open: vi.fn(),
-}));
-
-vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
-  writeImage: vi.fn(),
-  readImage: vi.fn(),
-}));
-
-vi.mock('@tauri-apps/plugin-fs', () => ({
-  writeFile: vi.fn(),
-  readFile: vi.fn(),
-}));
-
-vi.mock('@tauri-apps/api/webviewWindow', () => ({
-  getCurrentWebviewWindow: vi.fn(() => ({
-    onDragDropEvent: vi.fn(() => Promise.resolve(() => {})),
-  })),
+// Mock @platform adapters for testing
+// Tests that need specific adapter behavior will override these mocks
+vi.mock('@platform', () => ({
+  exportAdapter: {
+    exportPng: vi.fn(),
+    exportSvg: vi.fn(),
+  },
+  clipboardAdapter: {
+    copyImage: vi.fn(),
+  },
+  filesystemAdapter: {
+    pickImageFile: vi.fn(),
+    pickCsvFile: vi.fn(),
+    readFile: vi.fn(),
+  },
+  historyAdapter: {
+    list: vi.fn(),
+    save: vi.fn(),
+    delete: vi.fn(),
+    clear: vi.fn(),
+  },
+  templateAdapter: {
+    list: vi.fn(),
+    get: vi.fn(),
+    save: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    setDefault: vi.fn(),
+  },
+  scannerAdapter: {
+    validateQr: vi.fn(),
+    scanFromFile: vi.fn(),
+    scanFromData: vi.fn(),
+  },
+  batchAdapter: {
+    parseCsvFile: vi.fn(),
+    parseCsvContent: vi.fn(),
+    validateBatch: vi.fn(),
+    generateZip: vi.fn(),
+    saveFiles: vi.fn(),
+  },
+  dragDropAdapter: {
+    listen: vi.fn(() => Promise.resolve(() => {})),
+  },
 }));

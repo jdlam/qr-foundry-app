@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useExport } from './useExport';
-import { invoke } from '@tauri-apps/api/core';
+import { exportAdapter, clipboardAdapter, filesystemAdapter } from '@platform';
 
-vi.mock('@tauri-apps/api/core');
-const mockInvoke = vi.mocked(invoke);
+const mockExportPng = vi.mocked(exportAdapter.exportPng);
+const mockExportSvg = vi.mocked(exportAdapter.exportSvg);
+const mockCopyImage = vi.mocked(clipboardAdapter.copyImage);
+const mockPickImageFile = vi.mocked(filesystemAdapter.pickImageFile);
 
 describe('useExport', () => {
   beforeEach(() => {
@@ -19,8 +21,8 @@ describe('useExport', () => {
   });
 
   describe('exportPng', () => {
-    it('calls export_png with image data and suggested name', async () => {
-      mockInvoke.mockResolvedValueOnce({
+    it('calls exportAdapter.exportPng with image data and suggested name', async () => {
+      mockExportPng.mockResolvedValueOnce({
         success: true,
         path: '/Users/test/qr-code.png',
         error: null,
@@ -33,10 +35,7 @@ describe('useExport', () => {
         exportResult = await result.current.exportPng('data:image/png;base64,abc', 'my-qr.png');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('export_png', {
-        imageData: 'data:image/png;base64,abc',
-        suggestedName: 'my-qr.png',
-      });
+      expect(mockExportPng).toHaveBeenCalledWith('data:image/png;base64,abc', 'my-qr.png');
       expect(exportResult).toEqual({
         success: true,
         path: '/Users/test/qr-code.png',
@@ -46,7 +45,7 @@ describe('useExport', () => {
     });
 
     it('uses default name when not provided', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockExportPng.mockResolvedValueOnce({
         success: true,
         path: '/test/qr-code.png',
         error: null,
@@ -58,14 +57,11 @@ describe('useExport', () => {
         await result.current.exportPng('data:image/png;base64,abc');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('export_png', {
-        imageData: 'data:image/png;base64,abc',
-        suggestedName: 'qr-code.png',
-      });
+      expect(mockExportPng).toHaveBeenCalledWith('data:image/png;base64,abc', undefined);
     });
 
     it('handles cancelled save', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockExportPng.mockResolvedValueOnce({
         success: false,
         path: null,
         error: 'Save cancelled by user',
@@ -83,7 +79,7 @@ describe('useExport', () => {
     });
 
     it('handles API error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Failed to write file'));
+      mockExportPng.mockRejectedValueOnce(new Error('Failed to write file'));
 
       const { result } = renderHook(() => useExport());
 
@@ -98,8 +94,8 @@ describe('useExport', () => {
   });
 
   describe('exportSvg', () => {
-    it('calls export_svg with SVG data', async () => {
-      mockInvoke.mockResolvedValueOnce({
+    it('calls exportAdapter.exportSvg with SVG data', async () => {
+      mockExportSvg.mockResolvedValueOnce({
         success: true,
         path: '/Users/test/qr-code.svg',
         error: null,
@@ -111,15 +107,12 @@ describe('useExport', () => {
         await result.current.exportSvg('<svg>...</svg>', 'my-qr.svg');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('export_svg', {
-        svgData: '<svg>...</svg>',
-        suggestedName: 'my-qr.svg',
-      });
+      expect(mockExportSvg).toHaveBeenCalledWith('<svg>...</svg>', 'my-qr.svg');
       expect(result.current.lastExportPath).toBe('/Users/test/qr-code.svg');
     });
 
     it('uses default name when not provided', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockExportSvg.mockResolvedValueOnce({
         success: true,
         path: '/test/qr-code.svg',
         error: null,
@@ -131,14 +124,11 @@ describe('useExport', () => {
         await result.current.exportSvg('<svg></svg>');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('export_svg', {
-        svgData: '<svg></svg>',
-        suggestedName: 'qr-code.svg',
-      });
+      expect(mockExportSvg).toHaveBeenCalledWith('<svg></svg>', undefined);
     });
 
     it('handles error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Disk full'));
+      mockExportSvg.mockRejectedValueOnce(new Error('Disk full'));
 
       const { result } = renderHook(() => useExport());
 
@@ -152,8 +142,8 @@ describe('useExport', () => {
   });
 
   describe('copyToClipboard', () => {
-    it('calls copy_image_to_clipboard', async () => {
-      mockInvoke.mockResolvedValueOnce(true);
+    it('calls clipboardAdapter.copyImage', async () => {
+      mockCopyImage.mockResolvedValueOnce(true);
 
       const { result } = renderHook(() => useExport());
 
@@ -162,14 +152,12 @@ describe('useExport', () => {
         success = await result.current.copyToClipboard('data:image/png;base64,abc');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('copy_image_to_clipboard', {
-        imageData: 'data:image/png;base64,abc',
-      });
+      expect(mockCopyImage).toHaveBeenCalledWith('data:image/png;base64,abc');
       expect(success).toBe(true);
     });
 
     it('returns false on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Clipboard unavailable'));
+      mockCopyImage.mockRejectedValueOnce(new Error('Clipboard unavailable'));
 
       const { result } = renderHook(() => useExport());
 
@@ -184,7 +172,7 @@ describe('useExport', () => {
 
   describe('pickImageFile', () => {
     it('returns file path on selection', async () => {
-      mockInvoke.mockResolvedValueOnce('/Users/test/image.png');
+      mockPickImageFile.mockResolvedValueOnce('/Users/test/image.png');
 
       const { result } = renderHook(() => useExport());
 
@@ -193,12 +181,12 @@ describe('useExport', () => {
         path = await result.current.pickImageFile();
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('pick_image_file');
+      expect(mockPickImageFile).toHaveBeenCalled();
       expect(path).toBe('/Users/test/image.png');
     });
 
     it('returns null when cancelled', async () => {
-      mockInvoke.mockResolvedValueOnce(null);
+      mockPickImageFile.mockResolvedValueOnce(null);
 
       const { result } = renderHook(() => useExport());
 
@@ -211,7 +199,7 @@ describe('useExport', () => {
     });
 
     it('returns null on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Dialog failed'));
+      mockPickImageFile.mockRejectedValueOnce(new Error('Dialog failed'));
 
       const { result } = renderHook(() => useExport());
 
@@ -229,7 +217,7 @@ describe('useExport', () => {
     const pendingPromise = new Promise((resolve) => {
       resolvePromise = resolve;
     });
-    mockInvoke.mockReturnValueOnce(pendingPromise as Promise<unknown>);
+    mockExportPng.mockReturnValueOnce(pendingPromise as Promise<never>);
 
     const { result } = renderHook(() => useExport());
 

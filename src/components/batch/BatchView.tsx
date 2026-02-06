@@ -10,6 +10,7 @@ import {
   type ExportFormat,
 } from '../../stores/batchStore';
 import { useTauriDragDrop } from '../../hooks/useTauriDragDrop';
+import { isTauri } from '../../lib/platform';
 import { useState } from 'react';
 
 export function BatchView() {
@@ -653,14 +654,16 @@ export function BatchView() {
               )}
             </button>
 
-            {/* Export ZIP Button */}
-            <button
-              onClick={handleExportZip}
-              disabled={!allGenerated || isProcessing}
-              className="w-full py-2.5 bg-surface-hover border border-border rounded-lg text-sm font-semibold hover:bg-border/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Export as ZIP
-            </button>
+            {/* Export ZIP Button (desktop only) */}
+            {isTauri() && (
+              <button
+                onClick={handleExportZip}
+                disabled={!allGenerated || isProcessing}
+                className="w-full py-2.5 bg-surface-hover border border-border rounded-lg text-sm font-semibold hover:bg-border/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Export as ZIP
+              </button>
+            )}
 
             <button
               onClick={handleClear}

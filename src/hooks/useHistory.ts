@@ -1,30 +1,8 @@
 import { useCallback, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { historyAdapter } from '@platform';
+import type { HistoryItem, NewHistoryItem } from '../platform/types';
 
-export interface HistoryItem {
-  id: number;
-  content: string;
-  qrType: string;
-  label: string | null;
-  styleJson: string;
-  thumbnail: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface NewHistoryItem {
-  content: string;
-  qrType: string;
-  label?: string;
-  styleJson: string;
-  thumbnail?: string;
-}
-
-interface HistoryListResult {
-  items: HistoryItem[];
-  total: number;
-  hasMore: boolean;
-}
+export type { HistoryItem, NewHistoryItem };
 
 export function useHistory() {
   const [items, setItems] = useState<HistoryItem[]>([]);
@@ -36,11 +14,7 @@ export function useHistory() {
     async (limit = 50, offset = 0, search?: string): Promise<void> => {
       setIsLoading(true);
       try {
-        const result = await invoke<HistoryListResult>('history_list', {
-          limit,
-          offset,
-          search: search || null,
-        });
+        const result = await historyAdapter.list(limit, offset, search || null);
 
         if (offset === 0) {
           setItems(result.items);
@@ -61,7 +35,7 @@ export function useHistory() {
   const saveToHistory = useCallback(
     async (item: NewHistoryItem): Promise<number | null> => {
       try {
-        const id = await invoke<number>('history_save', { item });
+        const id = await historyAdapter.save(item);
         // Refresh the list
         await fetchHistory();
         return id;
@@ -76,7 +50,7 @@ export function useHistory() {
   const deleteFromHistory = useCallback(
     async (id: number): Promise<boolean> => {
       try {
-        const success = await invoke<boolean>('history_delete', { id });
+        const success = await historyAdapter.delete(id);
         if (success) {
           setItems((prev) => prev.filter((item) => item.id !== id));
           setTotal((prev) => prev - 1);
@@ -92,7 +66,7 @@ export function useHistory() {
 
   const clearHistory = useCallback(async (): Promise<boolean> => {
     try {
-      await invoke<number>('history_clear');
+      await historyAdapter.clear();
       setItems([]);
       setTotal(0);
       setHasMore(false);

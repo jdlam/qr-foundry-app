@@ -1,25 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useTauriDragDrop } from './useTauriDragDrop';
+import { dragDropAdapter } from '@platform';
+import type { DragDropCallback } from '../platform/types';
 
-vi.mock('@tauri-apps/api/webviewWindow');
+const mockListen = vi.mocked(dragDropAdapter.listen);
 
 describe('useTauriDragDrop', () => {
-  let mockEventHandler: ((event: { payload: { type: string; paths?: string[] } }) => void) | null =
-    null;
+  let capturedCallback: DragDropCallback | null = null;
   let mockUnlisten: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    mockEventHandler = null;
+    capturedCallback = null;
     mockUnlisten = vi.fn();
 
-    vi.mocked(getCurrentWebviewWindow).mockReturnValue({
-      onDragDropEvent: vi.fn((handler) => {
-        mockEventHandler = handler;
-        return Promise.resolve(mockUnlisten);
-      }),
-    } as unknown as ReturnType<typeof getCurrentWebviewWindow>);
+    mockListen.mockImplementation(async (callback) => {
+      capturedCallback = callback;
+      return mockUnlisten as unknown as () => void;
+    });
   });
 
   it('initializes with isDragging false and empty droppedFiles', () => {
@@ -32,12 +30,16 @@ describe('useTauriDragDrop', () => {
   it('registers drag-drop event listener on mount', () => {
     renderHook(() => useTauriDragDrop());
 
-    expect(getCurrentWebviewWindow).toHaveBeenCalled();
-    expect(getCurrentWebviewWindow().onDragDropEvent).toHaveBeenCalled();
+    expect(mockListen).toHaveBeenCalled();
   });
 
   it('unregisters event listener on unmount', async () => {
     const { unmount } = renderHook(() => useTauriDragDrop());
+
+    // Wait for the listen promise to resolve
+    await waitFor(() => {
+      expect(capturedCallback).not.toBeNull();
+    });
 
     unmount();
 
@@ -50,11 +52,11 @@ describe('useTauriDragDrop', () => {
     const { result } = renderHook(() => useTauriDragDrop());
 
     await waitFor(() => {
-      expect(mockEventHandler).not.toBeNull();
+      expect(capturedCallback).not.toBeNull();
     });
 
     act(() => {
-      mockEventHandler!({ payload: { type: 'over' } });
+      capturedCallback!({ type: 'over' });
     });
 
     expect(result.current.isDragging).toBe(true);
@@ -64,17 +66,17 @@ describe('useTauriDragDrop', () => {
     const { result } = renderHook(() => useTauriDragDrop());
 
     await waitFor(() => {
-      expect(mockEventHandler).not.toBeNull();
+      expect(capturedCallback).not.toBeNull();
     });
 
     // First trigger over, then leave
     act(() => {
-      mockEventHandler!({ payload: { type: 'over' } });
+      capturedCallback!({ type: 'over' });
     });
     expect(result.current.isDragging).toBe(true);
 
     act(() => {
-      mockEventHandler!({ payload: { type: 'leave' } });
+      capturedCallback!({ type: 'leave' });
     });
     expect(result.current.isDragging).toBe(false);
   });
@@ -83,18 +85,18 @@ describe('useTauriDragDrop', () => {
     const { result } = renderHook(() => useTauriDragDrop());
 
     await waitFor(() => {
-      expect(mockEventHandler).not.toBeNull();
+      expect(capturedCallback).not.toBeNull();
     });
 
     const testPaths = ['/path/to/image.png', '/path/to/another.jpg'];
 
     act(() => {
-      mockEventHandler!({ payload: { type: 'over' } });
+      capturedCallback!({ type: 'over' });
     });
     expect(result.current.isDragging).toBe(true);
 
     act(() => {
-      mockEventHandler!({ payload: { type: 'drop', paths: testPaths } });
+      capturedCallback!({ type: 'drop', paths: testPaths });
     });
 
     expect(result.current.isDragging).toBe(false);
@@ -106,13 +108,13 @@ describe('useTauriDragDrop', () => {
     renderHook(() => useTauriDragDrop(onDropCallback));
 
     await waitFor(() => {
-      expect(mockEventHandler).not.toBeNull();
+      expect(capturedCallback).not.toBeNull();
     });
 
     const testPaths = ['/path/to/logo.png'];
 
     act(() => {
-      mockEventHandler!({ payload: { type: 'drop', paths: testPaths } });
+      capturedCallback!({ type: 'drop', paths: testPaths });
     });
 
     expect(onDropCallback).toHaveBeenCalledWith(testPaths);
@@ -122,13 +124,13 @@ describe('useTauriDragDrop', () => {
     const { result } = renderHook(() => useTauriDragDrop());
 
     await waitFor(() => {
-      expect(mockEventHandler).not.toBeNull();
+      expect(capturedCallback).not.toBeNull();
     });
 
     const testPaths = ['/path/to/file.png'];
 
     act(() => {
-      mockEventHandler!({ payload: { type: 'drop', paths: testPaths } });
+      capturedCallback!({ type: 'drop', paths: testPaths });
     });
     expect(result.current.droppedFiles).toEqual(testPaths);
 
@@ -147,7 +149,7 @@ describe('useTauriDragDrop', () => {
     });
 
     await waitFor(() => {
-      expect(mockEventHandler).not.toBeNull();
+      expect(capturedCallback).not.toBeNull();
     });
 
     // Change the callback
@@ -156,7 +158,7 @@ describe('useTauriDragDrop', () => {
     const testPaths = ['/new/path.png'];
 
     act(() => {
-      mockEventHandler!({ payload: { type: 'drop', paths: testPaths } });
+      capturedCallback!({ type: 'drop', paths: testPaths });
     });
 
     // Should call the new callback, not the old one

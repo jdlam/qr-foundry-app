@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useHistory } from './useHistory';
-import { invoke } from '@tauri-apps/api/core';
+import { historyAdapter } from '@platform';
 
-vi.mock('@tauri-apps/api/core');
-const mockInvoke = vi.mocked(invoke);
+const mockList = vi.mocked(historyAdapter.list);
+const mockSave = vi.mocked(historyAdapter.save);
+const mockDelete = vi.mocked(historyAdapter.delete);
+const mockClear = vi.mocked(historyAdapter.clear);
 
 const mockHistoryItems = [
   {
@@ -45,7 +47,7 @@ describe('useHistory', () => {
 
   describe('fetchHistory', () => {
     it('fetches history with default pagination', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockList.mockResolvedValueOnce({
         items: mockHistoryItems,
         total: 2,
         hasMore: false,
@@ -57,18 +59,14 @@ describe('useHistory', () => {
         await result.current.fetchHistory();
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('history_list', {
-        limit: 50,
-        offset: 0,
-        search: null,
-      });
+      expect(mockList).toHaveBeenCalledWith(50, 0, null);
       expect(result.current.items).toHaveLength(2);
       expect(result.current.total).toBe(2);
       expect(result.current.hasMore).toBe(false);
     });
 
     it('fetches history with custom pagination', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockList.mockResolvedValueOnce({
         items: [mockHistoryItems[1]],
         total: 2,
         hasMore: false,
@@ -80,15 +78,11 @@ describe('useHistory', () => {
         await result.current.fetchHistory(10, 1);
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('history_list', {
-        limit: 10,
-        offset: 1,
-        search: null,
-      });
+      expect(mockList).toHaveBeenCalledWith(10, 1, null);
     });
 
     it('fetches history with search', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockList.mockResolvedValueOnce({
         items: [mockHistoryItems[0]],
         total: 1,
         hasMore: false,
@@ -100,15 +94,11 @@ describe('useHistory', () => {
         await result.current.fetchHistory(50, 0, 'example');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('history_list', {
-        limit: 50,
-        offset: 0,
-        search: 'example',
-      });
+      expect(mockList).toHaveBeenCalledWith(50, 0, 'example');
     });
 
     it('appends items when offset > 0', async () => {
-      mockInvoke
+      mockList
         .mockResolvedValueOnce({
           items: [mockHistoryItems[0]],
           total: 2,
@@ -136,7 +126,7 @@ describe('useHistory', () => {
     });
 
     it('handles fetch error gracefully', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Database error'));
+      mockList.mockRejectedValueOnce(new Error('Database error'));
 
       const { result } = renderHook(() => useHistory());
 
@@ -151,14 +141,12 @@ describe('useHistory', () => {
 
   describe('saveToHistory', () => {
     it('saves item and refreshes list', async () => {
-      mockInvoke
-        .mockResolvedValueOnce(3) // history_save returns new ID
-        .mockResolvedValueOnce({
-          // history_list for refresh
-          items: [...mockHistoryItems, { ...mockHistoryItems[0], id: 3 }],
-          total: 3,
-          hasMore: false,
-        });
+      mockSave.mockResolvedValueOnce(3);
+      mockList.mockResolvedValueOnce({
+        items: [...mockHistoryItems, { ...mockHistoryItems[0], id: 3 }],
+        total: 3,
+        hasMore: false,
+      });
 
       const { result } = renderHook(() => useHistory());
 
@@ -171,18 +159,16 @@ describe('useHistory', () => {
         });
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('history_save', {
-        item: {
-          content: 'https://new.com',
-          qrType: 'url',
-          styleJson: '{}',
-        },
+      expect(mockSave).toHaveBeenCalledWith({
+        content: 'https://new.com',
+        qrType: 'url',
+        styleJson: '{}',
       });
       expect(newId).toBe(3);
     });
 
     it('returns null on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Save failed'));
+      mockSave.mockRejectedValueOnce(new Error('Save failed'));
 
       const { result } = renderHook(() => useHistory());
 
@@ -201,7 +187,7 @@ describe('useHistory', () => {
 
   describe('deleteFromHistory', () => {
     it('deletes item and updates local state', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockList.mockResolvedValueOnce({
         items: mockHistoryItems,
         total: 2,
         hasMore: false,
@@ -213,14 +199,14 @@ describe('useHistory', () => {
         await result.current.fetchHistory();
       });
 
-      mockInvoke.mockResolvedValueOnce(true);
+      mockDelete.mockResolvedValueOnce(true);
 
       let success: boolean = false;
       await act(async () => {
         success = await result.current.deleteFromHistory(1);
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('history_delete', { id: 1 });
+      expect(mockDelete).toHaveBeenCalledWith(1);
       expect(success).toBe(true);
       expect(result.current.items).toHaveLength(1);
       expect(result.current.items[0].id).toBe(2);
@@ -228,7 +214,7 @@ describe('useHistory', () => {
     });
 
     it('does not update state on failed delete', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockList.mockResolvedValueOnce({
         items: mockHistoryItems,
         total: 2,
         hasMore: false,
@@ -240,7 +226,7 @@ describe('useHistory', () => {
         await result.current.fetchHistory();
       });
 
-      mockInvoke.mockResolvedValueOnce(false);
+      mockDelete.mockResolvedValueOnce(false);
 
       let success: boolean = true;
       await act(async () => {
@@ -252,7 +238,7 @@ describe('useHistory', () => {
     });
 
     it('returns false on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Delete failed'));
+      mockDelete.mockRejectedValueOnce(new Error('Delete failed'));
 
       const { result } = renderHook(() => useHistory());
 
@@ -267,7 +253,7 @@ describe('useHistory', () => {
 
   describe('clearHistory', () => {
     it('clears all history', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockList.mockResolvedValueOnce({
         items: mockHistoryItems,
         total: 2,
         hasMore: false,
@@ -279,14 +265,14 @@ describe('useHistory', () => {
         await result.current.fetchHistory();
       });
 
-      mockInvoke.mockResolvedValueOnce(2); // Returns count of deleted
+      mockClear.mockResolvedValueOnce(2);
 
       let success: boolean = false;
       await act(async () => {
         success = await result.current.clearHistory();
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('history_clear');
+      expect(mockClear).toHaveBeenCalled();
       expect(success).toBe(true);
       expect(result.current.items).toEqual([]);
       expect(result.current.total).toBe(0);
@@ -294,7 +280,7 @@ describe('useHistory', () => {
     });
 
     it('returns false on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Clear failed'));
+      mockClear.mockRejectedValueOnce(new Error('Clear failed'));
 
       const { result } = renderHook(() => useHistory());
 
@@ -312,7 +298,7 @@ describe('useHistory', () => {
     const pendingPromise = new Promise((resolve) => {
       resolvePromise = resolve;
     });
-    mockInvoke.mockReturnValueOnce(pendingPromise as Promise<unknown>);
+    mockList.mockReturnValueOnce(pendingPromise as Promise<never>);
 
     const { result } = renderHook(() => useHistory());
 

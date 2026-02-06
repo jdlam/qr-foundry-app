@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBatch } from './useBatch';
 import { useBatchStore } from '../stores/batchStore';
-import { invoke } from '@tauri-apps/api/core';
+import { batchAdapter, filesystemAdapter } from '@platform';
 
-vi.mock('@tauri-apps/api/core');
-const mockInvoke = vi.mocked(invoke);
+const mockParseCsvFile = vi.mocked(batchAdapter.parseCsvFile);
+const mockParseCsvContent = vi.mocked(batchAdapter.parseCsvContent);
+const mockPickCsvFile = vi.mocked(filesystemAdapter.pickCsvFile);
+const mockValidateBatch = vi.mocked(batchAdapter.validateBatch);
+const mockGenerateZip = vi.mocked(batchAdapter.generateZip);
+const mockSaveFiles = vi.mocked(batchAdapter.saveFiles);
 
 const mockBatchItems = [
   { row: 1, content: 'https://example.com', qrType: 'url', label: 'Example' },
@@ -37,7 +41,7 @@ describe('useBatch', () => {
 
   describe('parseCsvFile', () => {
     it('parses CSV file successfully', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockParseCsvFile.mockResolvedValueOnce({
         success: true,
         items: mockBatchItems,
         error: null,
@@ -51,16 +55,14 @@ describe('useBatch', () => {
         success = await result.current.parseCsvFile('/path/to/file.csv');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('batch_parse_csv', {
-        filePath: '/path/to/file.csv',
-      });
+      expect(mockParseCsvFile).toHaveBeenCalledWith('/path/to/file.csv');
       expect(success).toBe(true);
       expect(result.current.items).toEqual(mockBatchItems);
       expect(result.current.parseError).toBeNull();
     });
 
     it('handles parse failure', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockParseCsvFile.mockResolvedValueOnce({
         success: false,
         items: [],
         error: 'Missing content column',
@@ -80,7 +82,7 @@ describe('useBatch', () => {
     });
 
     it('handles API error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('File not found'));
+      mockParseCsvFile.mockRejectedValueOnce(new Error('File not found'));
 
       const { result } = renderHook(() => useBatch());
 
@@ -98,7 +100,7 @@ describe('useBatch', () => {
       const pendingPromise = new Promise((resolve) => {
         resolvePromise = resolve;
       });
-      mockInvoke.mockReturnValueOnce(pendingPromise as Promise<unknown>);
+      mockParseCsvFile.mockReturnValueOnce(pendingPromise as Promise<never>);
 
       const { result } = renderHook(() => useBatch());
 
@@ -119,7 +121,7 @@ describe('useBatch', () => {
 
   describe('parseCsvContent', () => {
     it('parses CSV content successfully', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockParseCsvContent.mockResolvedValueOnce({
         success: true,
         items: mockBatchItems,
         error: null,
@@ -133,15 +135,13 @@ describe('useBatch', () => {
         success = await result.current.parseCsvContent('content,type\nhttps://example.com,url');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('batch_parse_csv_content', {
-        content: 'content,type\nhttps://example.com,url',
-      });
+      expect(mockParseCsvContent).toHaveBeenCalledWith('content,type\nhttps://example.com,url');
       expect(success).toBe(true);
       expect(result.current.items).toEqual(mockBatchItems);
     });
 
     it('handles parse failure', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockParseCsvContent.mockResolvedValueOnce({
         success: false,
         items: [],
         error: 'Invalid CSV format',
@@ -162,7 +162,7 @@ describe('useBatch', () => {
 
   describe('pickCsvFile', () => {
     it('returns file path on selection', async () => {
-      mockInvoke.mockResolvedValueOnce('/Users/test/data.csv');
+      mockPickCsvFile.mockResolvedValueOnce('/Users/test/data.csv');
 
       const { result } = renderHook(() => useBatch());
 
@@ -171,12 +171,12 @@ describe('useBatch', () => {
         path = await result.current.pickCsvFile();
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('pick_csv_file');
+      expect(mockPickCsvFile).toHaveBeenCalled();
       expect(path).toBe('/Users/test/data.csv');
     });
 
     it('returns null when cancelled', async () => {
-      mockInvoke.mockResolvedValueOnce(null);
+      mockPickCsvFile.mockResolvedValueOnce(null);
 
       const { result } = renderHook(() => useBatch());
 
@@ -189,7 +189,7 @@ describe('useBatch', () => {
     });
 
     it('returns null on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Dialog failed'));
+      mockPickCsvFile.mockRejectedValueOnce(new Error('Dialog failed'));
 
       const { result } = renderHook(() => useBatch());
 
@@ -208,7 +208,7 @@ describe('useBatch', () => {
         { row: 1, success: true, decodedContent: 'https://example.com', contentMatch: true, error: null },
         { row: 2, success: true, decodedContent: 'tel:+15551234567', contentMatch: true, error: null },
       ];
-      mockInvoke.mockResolvedValueOnce(validationResults);
+      mockValidateBatch.mockResolvedValueOnce(validationResults);
 
       const { result } = renderHook(() => useBatch());
 
@@ -217,9 +217,7 @@ describe('useBatch', () => {
         results = await result.current.validateBatch(mockGenerateItems);
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('batch_validate', {
-        items: mockGenerateItems,
-      });
+      expect(mockValidateBatch).toHaveBeenCalledWith(mockGenerateItems);
       expect(results).toEqual(validationResults);
       expect(result.current.validationResults.get(1)?.success).toBe(true);
       expect(result.current.validationResults.get(2)?.success).toBe(true);
@@ -230,7 +228,7 @@ describe('useBatch', () => {
         { row: 1, success: true, decodedContent: 'https://example.com', contentMatch: true, error: null },
         { row: 2, success: false, decodedContent: null, contentMatch: false, error: 'No QR code detected' },
       ];
-      mockInvoke.mockResolvedValueOnce(validationResults);
+      mockValidateBatch.mockResolvedValueOnce(validationResults);
 
       const { result } = renderHook(() => useBatch());
 
@@ -244,7 +242,7 @@ describe('useBatch', () => {
     });
 
     it('returns empty array on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Validation failed'));
+      mockValidateBatch.mockRejectedValueOnce(new Error('Validation failed'));
 
       const { result } = renderHook(() => useBatch());
 
@@ -259,7 +257,7 @@ describe('useBatch', () => {
 
   describe('generateZip', () => {
     it('generates ZIP successfully', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockGenerateZip.mockResolvedValueOnce({
         success: true,
         zipPath: '/Users/test/qr-codes.zip',
         validationResults: [],
@@ -273,11 +271,7 @@ describe('useBatch', () => {
         generateResult = await result.current.generateZip(mockGenerateItems, 'png', false);
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('batch_generate_zip', {
-        items: mockGenerateItems,
-        format: 'png',
-        validate: false,
-      });
+      expect(mockGenerateZip).toHaveBeenCalledWith(mockGenerateItems, 'png', false);
       expect((generateResult as { success: boolean }).success).toBe(true);
       expect((generateResult as { zipPath: string }).zipPath).toBe('/Users/test/qr-codes.zip');
     });
@@ -286,7 +280,7 @@ describe('useBatch', () => {
       const validationResults = [
         { row: 1, success: true, decodedContent: 'https://example.com', contentMatch: true, error: null },
       ];
-      mockInvoke.mockResolvedValueOnce({
+      mockGenerateZip.mockResolvedValueOnce({
         success: true,
         zipPath: '/Users/test/qr-codes.zip',
         validationResults,
@@ -299,16 +293,12 @@ describe('useBatch', () => {
         await result.current.generateZip(mockGenerateItems, 'png', true);
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('batch_generate_zip', {
-        items: mockGenerateItems,
-        format: 'png',
-        validate: true,
-      });
+      expect(mockGenerateZip).toHaveBeenCalledWith(mockGenerateItems, 'png', true);
       expect(result.current.validationResults.get(1)?.success).toBe(true);
     });
 
     it('handles cancelled save', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockGenerateZip.mockResolvedValueOnce({
         success: false,
         zipPath: null,
         validationResults: [],
@@ -326,7 +316,7 @@ describe('useBatch', () => {
     });
 
     it('returns null on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('ZIP creation failed'));
+      mockGenerateZip.mockRejectedValueOnce(new Error('ZIP creation failed'));
 
       const { result } = renderHook(() => useBatch());
 
@@ -343,7 +333,7 @@ describe('useBatch', () => {
       const pendingPromise = new Promise((resolve) => {
         resolvePromise = resolve;
       });
-      mockInvoke.mockReturnValueOnce(pendingPromise as Promise<unknown>);
+      mockGenerateZip.mockReturnValueOnce(pendingPromise as Promise<never>);
 
       const { result } = renderHook(() => useBatch());
 
@@ -364,7 +354,7 @@ describe('useBatch', () => {
 
   describe('saveFiles', () => {
     it('saves files successfully', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockSaveFiles.mockResolvedValueOnce({
         success: true,
         directory: '/Users/test/qr-codes',
         filesSaved: 2,
@@ -378,18 +368,14 @@ describe('useBatch', () => {
         saveResult = await result.current.saveFiles(mockGenerateItems, 'png', 'qr-code');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('batch_save_files', {
-        items: mockGenerateItems,
-        format: 'png',
-        baseName: 'qr-code',
-      });
+      expect(mockSaveFiles).toHaveBeenCalledWith(mockGenerateItems, 'png', 'qr-code');
       expect((saveResult as { success: boolean }).success).toBe(true);
       expect((saveResult as { filesSaved: number }).filesSaved).toBe(2);
       expect((saveResult as { directory: string }).directory).toBe('/Users/test/qr-codes');
     });
 
     it('saves SVG files', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockSaveFiles.mockResolvedValueOnce({
         success: true,
         directory: '/Users/test/qr-codes',
         filesSaved: 2,
@@ -402,15 +388,11 @@ describe('useBatch', () => {
         await result.current.saveFiles(mockGenerateItems, 'svg', 'my-qr');
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('batch_save_files', {
-        items: mockGenerateItems,
-        format: 'svg',
-        baseName: 'my-qr',
-      });
+      expect(mockSaveFiles).toHaveBeenCalledWith(mockGenerateItems, 'svg', 'my-qr');
     });
 
     it('handles cancelled save', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockSaveFiles.mockResolvedValueOnce({
         success: false,
         directory: null,
         filesSaved: 0,
@@ -428,7 +410,7 @@ describe('useBatch', () => {
     });
 
     it('returns null on error', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Save failed'));
+      mockSaveFiles.mockRejectedValueOnce(new Error('Save failed'));
 
       const { result } = renderHook(() => useBatch());
 
@@ -445,7 +427,7 @@ describe('useBatch', () => {
       const pendingPromise = new Promise((resolve) => {
         resolvePromise = resolve;
       });
-      mockInvoke.mockReturnValueOnce(pendingPromise as Promise<unknown>);
+      mockSaveFiles.mockReturnValueOnce(pendingPromise as Promise<never>);
 
       const { result } = renderHook(() => useBatch());
 
@@ -466,7 +448,7 @@ describe('useBatch', () => {
 
   describe('clearBatch', () => {
     it('clears all batch state', async () => {
-      mockInvoke.mockResolvedValueOnce({
+      mockParseCsvContent.mockResolvedValueOnce({
         success: true,
         items: mockBatchItems,
         error: null,
@@ -480,7 +462,7 @@ describe('useBatch', () => {
       });
 
       // Set some validation results
-      mockInvoke.mockResolvedValueOnce([
+      mockValidateBatch.mockResolvedValueOnce([
         { row: 1, success: true, decodedContent: 'test', contentMatch: true, error: null },
       ]);
 

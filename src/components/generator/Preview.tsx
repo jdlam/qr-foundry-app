@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { historyAdapter } from '@platform';
 import { toast } from 'sonner';
 import { useQrGenerator } from '../../hooks/useQrGenerator';
 import { useValidation } from '../../hooks/useValidation';
@@ -50,14 +50,12 @@ export function Preview() {
       });
 
       try {
-        await invoke('history_save', {
-          item: {
-            content,
-            qrType: inputType,
-            label: null,
-            styleJson,
-            thumbnail: thumbnail || null,
-          },
+        await historyAdapter.save({
+          content,
+          qrType: inputType,
+          label: undefined,
+          styleJson,
+          thumbnail: thumbnail || undefined,
         });
       } catch (error) {
         console.error('Failed to save to history:', error);
@@ -77,13 +75,11 @@ export function Preview() {
   const handleCopy = useCallback(async () => {
     const dataUrl = await getDataUrl();
     if (dataUrl) {
-      // Try Tauri clipboard first, fall back to browser API
       try {
         const success = await copyToClipboard(dataUrl);
         if (success) {
           setCopySuccess(true);
           setTimeout(() => setCopySuccess(false), 2000);
-          // Save to history
           saveToHistory(dataUrl);
           return;
         }

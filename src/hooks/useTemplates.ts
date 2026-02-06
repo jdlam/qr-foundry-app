@@ -1,21 +1,8 @@
 import { useCallback, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { templateAdapter } from '@platform';
+import type { Template, NewTemplate } from '../platform/types';
 
-export interface Template {
-  id: number;
-  name: string;
-  styleJson: string;
-  preview: string | null;
-  isDefault: boolean;
-  createdAt: string;
-}
-
-interface NewTemplate {
-  name: string;
-  styleJson: string;
-  preview?: string;
-  isDefault?: boolean;
-}
+export type { Template, NewTemplate };
 
 export function useTemplates() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -24,7 +11,7 @@ export function useTemplates() {
   const fetchTemplates = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     try {
-      const result = await invoke<Template[]>('template_list');
+      const result = await templateAdapter.list();
       setTemplates(result);
     } catch (error) {
       console.error('Failed to fetch templates:', error);
@@ -35,7 +22,7 @@ export function useTemplates() {
 
   const getTemplate = useCallback(async (id: number): Promise<Template | null> => {
     try {
-      const result = await invoke<Template | null>('template_get', { id });
+      const result = await templateAdapter.get(id);
       return result;
     } catch (error) {
       console.error('Failed to get template:', error);
@@ -46,7 +33,7 @@ export function useTemplates() {
   const saveTemplate = useCallback(
     async (template: NewTemplate): Promise<number | null> => {
       try {
-        const id = await invoke<number>('template_save', { template });
+        const id = await templateAdapter.save(template);
         await fetchTemplates();
         return id;
       } catch (error) {
@@ -60,7 +47,7 @@ export function useTemplates() {
   const updateTemplate = useCallback(
     async (id: number, template: NewTemplate): Promise<boolean> => {
       try {
-        const success = await invoke<boolean>('template_update', { id, template });
+        const success = await templateAdapter.update(id, template);
         if (success) {
           await fetchTemplates();
         }
@@ -76,7 +63,7 @@ export function useTemplates() {
   const deleteTemplate = useCallback(
     async (id: number): Promise<boolean> => {
       try {
-        const success = await invoke<boolean>('template_delete', { id });
+        const success = await templateAdapter.delete(id);
         if (success) {
           setTemplates((prev) => prev.filter((t) => t.id !== id));
         }
@@ -92,7 +79,7 @@ export function useTemplates() {
   const setDefaultTemplate = useCallback(
     async (id: number): Promise<boolean> => {
       try {
-        const success = await invoke<boolean>('template_set_default', { id });
+        const success = await templateAdapter.setDefault(id);
         if (success) {
           setTemplates((prev) =>
             prev.map((t) => ({
