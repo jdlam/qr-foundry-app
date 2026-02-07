@@ -16,15 +16,15 @@ export function TitleBar() {
 
   return (
     <div
+      data-tauri-drag-region
       className="h-[38px] flex items-center shrink-0 relative z-50"
       style={{
         background: 'var(--titlebar-bg)',
         borderBottom: '1px solid var(--border)',
-        WebkitAppRegion: 'drag',
         // On macOS with overlay titlebar, leave space for native traffic lights
         paddingLeft: isMacTauri ? '96px' : '16px',
         paddingRight: '16px',
-      } as React.CSSProperties}
+      }}
     >
       {/* Logo + Title */}
       <div className="flex items-center gap-2 font-mono font-semibold text-[13px] tracking-tight" style={{ color: 'var(--text-primary)' }}>
@@ -54,10 +54,7 @@ export function TitleBar() {
       </div>
 
       {/* Right side controls */}
-      <div
-        className="ml-auto flex items-center gap-1"
-        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-      >
+      <div className="ml-auto flex items-center gap-1">
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
