@@ -264,6 +264,37 @@ xcode-select --install
 2. Ensure image is rendered at sufficient resolution (min 256px)
 3. Verify the QR content matches exactly (no trailing whitespace)
 
+## Git Workflow
+
+**IMPORTANT: Never push directly to `main`.** All code changes must go through a pull
+request, even for small fixes. This ensures every change gets CI checks and a review
+opportunity before merging. The only exception is documentation-only changes to the
+shared plans repo.
+
+### Branching
+
+- `main` — Production-ready. Treat as protected — no direct pushes.
+- Feature branches: `feat/description` (e.g. `feat/dynamic-code-ui`)
+- Bug fixes: `fix/description` (e.g. `fix/svg-export-transparency`)
+
+### Commits
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat: add dynamic code management UI
+fix: resolve SVG export transparency issue
+test: add coverage for auth store
+docs: update platform adapter docs
+```
+
+### Pull Requests
+
+- Every PR must pass CI (lint, typecheck, tests).
+- PRs should be small and focused. One feature or fix per PR.
+- Include a description of what changed and why.
+- Update tests and documentation as part of the same PR, not separately.
+
 ## Testing
 
 **IMPORTANT: Always maintain test coverage when making changes.**
