@@ -1,4 +1,5 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
+import { HexColorPicker } from 'react-colorful';
 import { filesystemAdapter } from '@platform';
 import { toast } from 'sonner';
 import { useQrStore } from '../../stores/qrStore';
@@ -102,50 +103,117 @@ const EC_LEVELS: { id: ErrorCorrection; percent: string; desc: string }[] = [
 // Default logo size that fills ~80% of the logo area (32 out of 40 max)
 const DEFAULT_LOGO_SIZE = 32;
 
-function ColorRow({
-  label,
+function ColorSwatch({
   value,
   onChange,
 }: {
-  label: string;
   value: string;
   onChange: (color: string) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
 
   return (
-    <div className="flex items-center gap-2.5 mb-2">
-      <span
-        className="font-mono text-xs font-semibold w-[22px] shrink-0"
-        style={{ color: 'var(--text-muted)' }}
-      >
-        {label}
-      </span>
+    <div className="relative flex-1">
       <div
-        className="flex items-center gap-2 px-2.5 py-1.5 flex-1 cursor-pointer rounded-sm border-2 transition-colors"
+        ref={triggerRef}
+        className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer rounded-sm border-2 transition-colors"
         style={{
           background: 'var(--input-bg)',
-          borderColor: 'var(--input-border)',
+          borderColor: open ? 'var(--accent)' : 'var(--input-border)',
         }}
-        onClick={() => inputRef.current?.click()}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-faint)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--input-border)'; }}
+        onClick={() => setOpen(!open)}
+        onMouseEnter={(e) => { if (!open) e.currentTarget.style.borderColor = 'var(--text-faint)'; }}
+        onMouseLeave={(e) => { if (!open) e.currentTarget.style.borderColor = 'var(--input-border)'; }}
       >
         <div
-          className="w-6 h-6 rounded-sm shrink-0 border-2"
+          className="w-5 h-5 rounded-sm shrink-0 border-2"
           style={{ background: value, borderColor: 'var(--swatch-border)' }}
         />
-        <span className="font-mono text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+        <span className="font-mono text-[12px] font-medium" style={{ color: 'var(--text-secondary)' }}>
           {value}
         </span>
-        <input
-          ref={inputRef}
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-0 h-0 opacity-0 absolute pointer-events-none"
-        />
       </div>
+      {open && (
+        <div
+          ref={popoverRef}
+          className="absolute right-0 top-full mt-1 z-50 rounded-sm shadow-lg p-3"
+          style={{
+            background: 'var(--panel-bg)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          <HexColorPicker color={value} onChange={onChange} />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^#[0-9a-fA-F]{0,6}$/.test(v)) onChange(v);
+            }}
+            className="w-full mt-2 text-xs font-mono px-2 py-1.5 rounded-sm border-2 outline-none"
+            style={{
+              background: 'var(--input-bg)',
+              borderColor: 'var(--input-border)',
+              color: 'var(--text-primary)',
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--input-border)'; }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ModeToggle({
+  options,
+  value,
+  onChange,
+}: {
+  options: { id: string; label: string }[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div
+      className="flex rounded-sm p-0.5 mb-2"
+      style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)' }}
+    >
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          className="flex-1 text-[11px] font-medium py-1 rounded-sm transition-colors"
+          style={{
+            background: value === opt.id ? 'var(--active-bg)' : 'transparent',
+            color: value === opt.id ? 'var(--accent)' : 'var(--text-faint)',
+          }}
+          onClick={() => onChange(opt.id)}
+          onMouseEnter={(e) => {
+            if (value !== opt.id) e.currentTarget.style.color = 'var(--text-secondary)';
+          }}
+          onMouseLeave={(e) => {
+            if (value !== opt.id) e.currentTarget.style.color = 'var(--text-faint)';
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -371,34 +439,19 @@ export function StylePanel() {
         </div>
       </div>
 
-      {/* Colors */}
+      {/* Foreground */}
       <div>
         <div className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
-          Colors
+          Foreground
         </div>
-        <ColorRow label="FG" value={foreground} onChange={setForeground} />
-        <ColorRow label="BG" value={background} onChange={setBackground} />
-
-        {/* Gradient toggle */}
-        <div className="flex items-center gap-2.5 mt-2.5">
-          <div
-            className="w-9 h-5 rounded-full relative cursor-pointer transition-colors"
-            style={{ background: useGradient ? 'var(--accent)' : 'var(--input-border)' }}
-            onClick={() => setUseGradient(!useGradient)}
-          >
-            <div
-              className="w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform"
-              style={{ left: '2px', transform: useGradient ? 'translateX(16px)' : 'none' }}
-            />
-          </div>
-          <span className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Gradient Fill
-          </span>
-        </div>
-        {useGradient && (
-          <div className="flex gap-2 mt-2 items-center">
-            <ColorRow
-              label="A"
+        <ModeToggle
+          options={[{ id: 'solid', label: 'Solid' }, { id: 'gradient', label: 'Gradient' }]}
+          value={useGradient ? 'gradient' : 'solid'}
+          onChange={(id) => setUseGradient(id === 'gradient')}
+        />
+        {useGradient ? (
+          <div className="flex gap-2">
+            <ColorSwatch
               value={gradient.colorStops[0]?.color || '#1a1a2e'}
               onChange={(color) =>
                 setGradient({
@@ -409,8 +462,7 @@ export function StylePanel() {
                 })
               }
             />
-            <ColorRow
-              label="B"
+            <ColorSwatch
               value={gradient.colorStops[1]?.color || '#e94560'}
               onChange={(color) =>
                 setGradient({
@@ -422,28 +474,24 @@ export function StylePanel() {
               }
             />
           </div>
+        ) : (
+          <ColorSwatch value={foreground} onChange={setForeground} />
         )}
+      </div>
 
-        {/* Transparent checkbox */}
-        <div className="flex items-center gap-2 mt-2">
-          <div
-            className="w-4 h-4 rounded-sm border-2 flex items-center justify-center cursor-pointer transition-colors"
-            style={{
-              borderColor: transparentBg ? 'var(--accent)' : 'var(--input-border)',
-              background: transparentBg ? 'var(--accent)' : 'transparent',
-            }}
-            onClick={() => setTransparentBg(!transparentBg)}
-          >
-            {transparentBg && (
-              <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            )}
-          </div>
-          <span className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Transparent Background
-          </span>
+      {/* Background */}
+      <div>
+        <div className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+          Background
         </div>
+        <ModeToggle
+          options={[{ id: 'solid', label: 'Solid' }, { id: 'transparent', label: 'Transparent' }]}
+          value={transparentBg ? 'transparent' : 'solid'}
+          onChange={(id) => setTransparentBg(id === 'transparent')}
+        />
+        {!transparentBg && (
+          <ColorSwatch value={background} onChange={setBackground} />
+        )}
       </div>
 
       {/* Logo */}

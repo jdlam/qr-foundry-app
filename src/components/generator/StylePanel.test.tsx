@@ -117,75 +117,57 @@ describe('StylePanel', () => {
     });
   });
 
-  describe('Colors', () => {
-    it('renders foreground and background color inputs', () => {
+  describe('Foreground', () => {
+    it('renders foreground section with solid/gradient toggle', () => {
       render(<StylePanel />);
 
-      expect(screen.getByText('FG')).toBeInTheDocument();
-      expect(screen.getByText('BG')).toBeInTheDocument();
+      expect(screen.getByText('Foreground')).toBeInTheDocument();
+      expect(screen.getByText('Gradient')).toBeInTheDocument();
+      // "Solid" appears in both foreground and background toggles
+      expect(screen.getAllByText('Solid')).toHaveLength(2);
     });
 
-    it('renders color input elements', () => {
+    it('shows single color swatch in solid mode', () => {
       render(<StylePanel />);
 
-      // Color inputs have type="color"
-      const container = document.querySelector('body');
-      const colorInputs = container?.querySelectorAll('input[type="color"]');
-      expect(colorInputs?.length).toBeGreaterThanOrEqual(2);
+      // Default foreground color from qrStore
+      expect(screen.getByText('#1a1a2e')).toBeInTheDocument();
     });
 
-    it('renders transparent background option', () => {
+    it('switches to gradient mode and shows two color swatches', () => {
       render(<StylePanel />);
 
-      expect(screen.getByText('Transparent Background')).toBeInTheDocument();
-    });
+      fireEvent.click(screen.getByText('Gradient'));
+      expect(useQrStore.getState().useGradient).toBe(true);
 
-    it('toggles transparent background', () => {
-      render(<StylePanel />);
-
-      // The transparent checkbox is a custom div, find it by its adjacent text
-      const transparentText = screen.getByText('Transparent Background');
-      const transparentToggle = transparentText.previousElementSibling;
-
-      expect(transparentToggle).toBeDefined();
-      expect(useQrStore.getState().transparentBg).toBe(false);
-
-      fireEvent.click(transparentToggle!);
-      expect(useQrStore.getState().transparentBg).toBe(true);
-
-      fireEvent.click(transparentToggle!);
-      expect(useQrStore.getState().transparentBg).toBe(false);
+      // Should show both gradient stop colors
+      expect(screen.getByText('#1a1a2e')).toBeInTheDocument();
+      expect(screen.getByText('#e94560')).toBeInTheDocument();
     });
   });
 
-  describe('Gradient', () => {
-    it('renders gradient toggle', () => {
+  describe('Background', () => {
+    it('renders background section with solid/transparent toggle', () => {
       render(<StylePanel />);
 
-      expect(screen.getByText('Gradient Fill')).toBeInTheDocument();
+      expect(screen.getByText('Background')).toBeInTheDocument();
+      expect(screen.getByText('Transparent')).toBeInTheDocument();
     });
 
-    it('toggles gradient option', () => {
+    it('shows color swatch in solid mode', () => {
       render(<StylePanel />);
 
-      // The gradient toggle is a custom toggle switch (div), find it by its adjacent text
-      const gradientText = screen.getByText('Gradient Fill');
-      const gradientToggle = gradientText.previousElementSibling;
-
-      expect(gradientToggle).toBeDefined();
-      expect(useQrStore.getState().useGradient).toBe(false);
-
-      fireEvent.click(gradientToggle!);
-      expect(useQrStore.getState().useGradient).toBe(true);
+      expect(screen.getByText('#ffffff')).toBeInTheDocument();
     });
 
-    it('shows gradient color pickers when gradient enabled', () => {
-      useQrStore.getState().setUseGradient(true);
+    it('hides color swatch in transparent mode', () => {
       render(<StylePanel />);
 
-      // Should show A and B labels for gradient colors
-      expect(screen.getByText('A')).toBeInTheDocument();
-      expect(screen.getByText('B')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('Transparent'));
+      expect(useQrStore.getState().transparentBg).toBe(true);
+
+      // Background color swatch should be gone
+      expect(screen.queryByText('#ffffff')).not.toBeInTheDocument();
     });
   });
 
@@ -567,6 +549,125 @@ describe('StylePanel', () => {
       render(<StylePanel />);
 
       expect(screen.getByText('Drop logo or click to upload')).toBeInTheDocument();
+    });
+  });
+
+  describe('ColorSwatch popover', () => {
+    it('opens popover when color swatch is clicked', () => {
+      render(<StylePanel />);
+
+      // The foreground color swatch shows the hex value as text
+      const swatch = screen.getByText('#1a1a2e');
+      fireEvent.click(swatch);
+
+      // Popover should contain a hex text input
+      expect(screen.getByDisplayValue('#1a1a2e')).toBeInTheDocument();
+    });
+
+    it('closes popover when clicking outside', () => {
+      render(<StylePanel />);
+
+      // Open the popover
+      const swatch = screen.getByText('#1a1a2e');
+      fireEvent.click(swatch);
+
+      // Should have the hex input in the popover
+      expect(screen.getByDisplayValue('#1a1a2e')).toBeInTheDocument();
+
+      // Click outside (on the document body)
+      fireEvent.mouseDown(document.body);
+
+      // Popover should close — no more hex input
+      expect(screen.queryByDisplayValue('#1a1a2e')).not.toBeInTheDocument();
+    });
+
+    it('accepts valid hex input in popover', () => {
+      render(<StylePanel />);
+
+      // Open the popover
+      const swatch = screen.getByText('#1a1a2e');
+      fireEvent.click(swatch);
+
+      // Find the text input in the popover
+      const popoverInput = screen.getByDisplayValue('#1a1a2e');
+
+      fireEvent.change(popoverInput, { target: { value: '#ff0000' } });
+
+      expect(useQrStore.getState().foreground).toBe('#ff0000');
+    });
+
+    it('rejects invalid hex input', () => {
+      render(<StylePanel />);
+
+      const swatch = screen.getByText('#1a1a2e');
+      fireEvent.click(swatch);
+
+      const popoverInput = screen.getByDisplayValue('#1a1a2e');
+
+      // Try entering invalid value (no # prefix)
+      fireEvent.change(popoverInput, { target: { value: 'xyz' } });
+
+      // Should not update — foreground stays as original
+      expect(useQrStore.getState().foreground).toBe('#1a1a2e');
+    });
+
+    it('opens gradient color swatches when in gradient mode', () => {
+      render(<StylePanel />);
+
+      fireEvent.click(screen.getByText('Gradient'));
+
+      // Click first gradient swatch
+      const firstGradientSwatch = screen.getByText('#1a1a2e');
+      fireEvent.click(firstGradientSwatch);
+
+      // Should open a popover with hex input
+      expect(screen.getByDisplayValue('#1a1a2e')).toBeInTheDocument();
+    });
+  });
+
+  describe('ModeToggle', () => {
+    it('renders foreground mode toggle with Solid and Gradient options', () => {
+      render(<StylePanel />);
+
+      expect(screen.getByText('Gradient')).toBeInTheDocument();
+      // "Solid" appears in both foreground and background toggles
+      expect(screen.getAllByText('Solid')).toHaveLength(2);
+    });
+
+    it('renders background mode toggle with Solid and Transparent options', () => {
+      render(<StylePanel />);
+
+      expect(screen.getByText('Transparent')).toBeInTheDocument();
+    });
+
+    it('toggles foreground between solid and gradient', () => {
+      render(<StylePanel />);
+
+      // Start in solid mode
+      expect(useQrStore.getState().useGradient).toBe(false);
+
+      fireEvent.click(screen.getByText('Gradient'));
+      expect(useQrStore.getState().useGradient).toBe(true);
+
+      // Switch back to solid — use getAllByText since 'Solid' appears in both toggles
+      const solidButtons = screen.getAllByText('Solid');
+      // The first Solid button is the foreground toggle
+      fireEvent.click(solidButtons[0]);
+      expect(useQrStore.getState().useGradient).toBe(false);
+    });
+
+    it('toggles background between solid and transparent', () => {
+      render(<StylePanel />);
+
+      expect(useQrStore.getState().transparentBg).toBe(false);
+
+      fireEvent.click(screen.getByText('Transparent'));
+      expect(useQrStore.getState().transparentBg).toBe(true);
+
+      // Switch back to solid — the second Solid button is the background toggle
+      const solidButtons = screen.getAllByText('Solid');
+      fireEvent.click(solidButtons[1]);
+      expect(useQrStore.getState().transparentBg).toBe(false);
     });
   });
 });

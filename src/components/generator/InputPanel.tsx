@@ -364,42 +364,37 @@ export function InputPanel() {
         >
           Type
         </div>
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-wrap gap-1.5">
           {INPUT_TYPES.map((type) => {
             const isActive = inputType === type.id;
             return (
               <button
                 key={type.id}
                 onClick={() => setInputType(type.id)}
-                className="flex items-center gap-2.5 w-full text-left rounded-sm transition-colors"
+                className="flex items-center gap-1 rounded-sm text-[12px] font-medium transition-colors"
                 style={{
-                  padding: '7px 10px',
+                  padding: '5px 10px',
                   background: isActive ? 'var(--active-bg)' : 'transparent',
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                  border: isActive ? '1px solid var(--accent)' : '1px solid var(--input-border)',
                 }}
                 onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.background = 'var(--hover-bg)';
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'var(--hover-bg)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  if (!isActive) e.currentTarget.style.background = 'transparent';
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = 'var(--text-muted)';
+                  }
                 }}
               >
-                {/* Radio circle */}
-                <div
-                  className="w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors"
-                  style={{ borderColor: isActive ? 'var(--accent)' : 'var(--input-border)' }}
-                >
-                  {isActive && (
-                    <div
-                      className="w-2 h-2 rounded-full"
-                      style={{ background: 'var(--accent)' }}
-                    />
-                  )}
-                </div>
-                <span className="text-sm font-medium flex-1">{type.label}</span>
+                {type.label}
                 {type.badge && (
                   <span
-                    className="font-mono text-[9px] font-bold uppercase tracking-wide px-[5px] py-px rounded-sm"
+                    className="font-mono text-[8px] font-bold uppercase tracking-wide px-1 py-px rounded-sm leading-none"
                     style={{
                       background: 'var(--badge-pro-bg)',
                       color: 'var(--badge-pro-text)',
