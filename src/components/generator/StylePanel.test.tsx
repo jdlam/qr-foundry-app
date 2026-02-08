@@ -125,13 +125,12 @@ describe('StylePanel', () => {
       expect(screen.getByText('BG')).toBeInTheDocument();
     });
 
-    it('renders color input elements', () => {
+    it('renders color swatch elements', () => {
       render(<StylePanel />);
 
-      // Color inputs have type="color"
-      const container = document.querySelector('body');
-      const colorInputs = container?.querySelectorAll('input[type="color"]');
-      expect(colorInputs?.length).toBeGreaterThanOrEqual(2);
+      // Color rows show hex values as text (defaults from qrStore)
+      expect(screen.getByText('#1a1a2e')).toBeInTheDocument();
+      expect(screen.getByText('#ffffff')).toBeInTheDocument();
     });
 
     it('renders transparent background option', () => {

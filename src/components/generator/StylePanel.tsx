@@ -1,4 +1,5 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
+import { HexColorPicker } from 'react-colorful';
 import { filesystemAdapter } from '@platform';
 import { toast } from 'sonner';
 import { useQrStore } from '../../stores/qrStore';
@@ -111,10 +112,26 @@ function ColorRow({
   value: string;
   onChange: (color: string) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
 
   return (
-    <div className="flex items-center gap-2.5 mb-2">
+    <div className="flex items-center gap-2.5 mb-2 relative">
       <span
         className="font-mono text-xs font-semibold w-[22px] shrink-0"
         style={{ color: 'var(--text-muted)' }}
@@ -122,14 +139,15 @@ function ColorRow({
         {label}
       </span>
       <div
+        ref={triggerRef}
         className="flex items-center gap-2 px-2.5 py-1.5 flex-1 cursor-pointer rounded-sm border-2 transition-colors"
         style={{
           background: 'var(--input-bg)',
-          borderColor: 'var(--input-border)',
+          borderColor: open ? 'var(--accent)' : 'var(--input-border)',
         }}
-        onClick={() => inputRef.current?.click()}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-faint)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--input-border)'; }}
+        onClick={() => setOpen(!open)}
+        onMouseEnter={(e) => { if (!open) e.currentTarget.style.borderColor = 'var(--text-faint)'; }}
+        onMouseLeave={(e) => { if (!open) e.currentTarget.style.borderColor = 'var(--input-border)'; }}
       >
         <div
           className="w-6 h-6 rounded-sm shrink-0 border-2"
@@ -138,14 +156,35 @@ function ColorRow({
         <span className="font-mono text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
           {value}
         </span>
-        <input
-          ref={inputRef}
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-0 h-0 opacity-0 absolute pointer-events-none"
-        />
       </div>
+      {open && (
+        <div
+          ref={popoverRef}
+          className="absolute left-0 top-full mt-1 z-50 rounded-sm shadow-lg p-3"
+          style={{
+            background: 'var(--panel-bg)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          <HexColorPicker color={value} onChange={onChange} />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^#[0-9a-fA-F]{0,6}$/.test(v)) onChange(v);
+            }}
+            className="w-full mt-2 text-xs font-mono px-2 py-1.5 rounded-sm border-2 outline-none"
+            style={{
+              background: 'var(--input-bg)',
+              borderColor: 'var(--input-border)',
+              color: 'var(--text-primary)',
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--input-border)'; }}
+          />
+        </div>
+      )}
     </div>
   );
 }
