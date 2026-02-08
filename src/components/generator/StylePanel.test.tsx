@@ -551,4 +551,123 @@ describe('StylePanel', () => {
       expect(screen.getByText('Drop logo or click to upload')).toBeInTheDocument();
     });
   });
+
+  describe('ColorSwatch popover', () => {
+    it('opens popover when color swatch is clicked', () => {
+      render(<StylePanel />);
+
+      // The foreground color swatch shows the hex value as text
+      const swatch = screen.getByText('#1a1a2e');
+      fireEvent.click(swatch);
+
+      // Popover should contain a hex text input
+      expect(screen.getByDisplayValue('#1a1a2e')).toBeInTheDocument();
+    });
+
+    it('closes popover when clicking outside', () => {
+      render(<StylePanel />);
+
+      // Open the popover
+      const swatch = screen.getByText('#1a1a2e');
+      fireEvent.click(swatch);
+
+      // Should have the hex input in the popover
+      expect(screen.getByDisplayValue('#1a1a2e')).toBeInTheDocument();
+
+      // Click outside (on the document body)
+      fireEvent.mouseDown(document.body);
+
+      // Popover should close — no more hex input
+      expect(screen.queryByDisplayValue('#1a1a2e')).not.toBeInTheDocument();
+    });
+
+    it('accepts valid hex input in popover', () => {
+      render(<StylePanel />);
+
+      // Open the popover
+      const swatch = screen.getByText('#1a1a2e');
+      fireEvent.click(swatch);
+
+      // Find the text input in the popover
+      const popoverInput = screen.getByDisplayValue('#1a1a2e');
+
+      fireEvent.change(popoverInput, { target: { value: '#ff0000' } });
+
+      expect(useQrStore.getState().foreground).toBe('#ff0000');
+    });
+
+    it('rejects invalid hex input', () => {
+      render(<StylePanel />);
+
+      const swatch = screen.getByText('#1a1a2e');
+      fireEvent.click(swatch);
+
+      const popoverInput = screen.getByDisplayValue('#1a1a2e');
+
+      // Try entering invalid value (no # prefix)
+      fireEvent.change(popoverInput, { target: { value: 'xyz' } });
+
+      // Should not update — foreground stays as original
+      expect(useQrStore.getState().foreground).toBe('#1a1a2e');
+    });
+
+    it('opens gradient color swatches when in gradient mode', () => {
+      render(<StylePanel />);
+
+      fireEvent.click(screen.getByText('Gradient'));
+
+      // Click first gradient swatch
+      const firstGradientSwatch = screen.getByText('#1a1a2e');
+      fireEvent.click(firstGradientSwatch);
+
+      // Should open a popover with hex input
+      expect(screen.getByDisplayValue('#1a1a2e')).toBeInTheDocument();
+    });
+  });
+
+  describe('ModeToggle', () => {
+    it('renders foreground mode toggle with Solid and Gradient options', () => {
+      render(<StylePanel />);
+
+      expect(screen.getByText('Gradient')).toBeInTheDocument();
+      // "Solid" appears in both foreground and background toggles
+      expect(screen.getAllByText('Solid')).toHaveLength(2);
+    });
+
+    it('renders background mode toggle with Solid and Transparent options', () => {
+      render(<StylePanel />);
+
+      expect(screen.getByText('Transparent')).toBeInTheDocument();
+    });
+
+    it('toggles foreground between solid and gradient', () => {
+      render(<StylePanel />);
+
+      // Start in solid mode
+      expect(useQrStore.getState().useGradient).toBe(false);
+
+      fireEvent.click(screen.getByText('Gradient'));
+      expect(useQrStore.getState().useGradient).toBe(true);
+
+      // Switch back to solid — use getAllByText since 'Solid' appears in both toggles
+      const solidButtons = screen.getAllByText('Solid');
+      // The first Solid button is the foreground toggle
+      fireEvent.click(solidButtons[0]);
+      expect(useQrStore.getState().useGradient).toBe(false);
+    });
+
+    it('toggles background between solid and transparent', () => {
+      render(<StylePanel />);
+
+      expect(useQrStore.getState().transparentBg).toBe(false);
+
+      fireEvent.click(screen.getByText('Transparent'));
+      expect(useQrStore.getState().transparentBg).toBe(true);
+
+      // Switch back to solid — the second Solid button is the background toggle
+      const solidButtons = screen.getAllByText('Solid');
+      fireEvent.click(solidButtons[1]);
+      expect(useQrStore.getState().transparentBg).toBe(false);
+    });
+  });
 });
