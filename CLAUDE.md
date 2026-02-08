@@ -4,35 +4,6 @@ A QR code generator shipping as both a **Tauri desktop app** (macOS, Windows, Li
 and a **web app** (`app.qr-foundry.com`). React + TypeScript frontend shared between
 both targets; Rust backend for desktop-only features.
 
-## System Architecture
-
-QR Foundry is composed of five services.
-See [`ARCHITECTURE.md`](../plans/architecture/ARCHITECTURE.md) for the full system diagram.
-
-| Service | Domain | Repo | Stack |
-|---------|--------|------|-------|
-| Desktop App | downloadable | `qr-foundry-app` (this repo) | Tauri + React |
-| Web App | `app.qr-foundry.com` | `qr-foundry-app` (this repo, separate build target) | React (no Tauri) |
-| Redirect Worker | `qrfo.link` | `qr-foundry-worker` | Cloudflare Worker + KV |
-| Billing API | `api.qr-foundry.com` | `qr-foundry-api` | Hono + Drizzle + Turso |
-| Marketing Site | `qr-foundry.com` | `qr-foundry-site` | Astro + Tailwind (planned) |
-
-### How they connect
-
-- **Desktop/Web App → Billing API** — auth (login/signup), plan tier checks, subscription management
-- **Desktop/Web App → Worker CRUD API** — create, list, update, delete dynamic QR codes
-- **Billing API → Worker KV** — writes `_quota::` keys after purchase/subscription events
-- **Browser (scan) → Worker Redirect** — public 302 redirects for scanned QR codes
-
-### Pricing tiers
-
-| Tier | Price | Key features |
-|------|-------|--------------|
-| Free | $0 | Basic QR types, basic colors, PNG export, clipboard, scanner, limited history (10) |
-| Pro Trial | $0 / 7 days | All Pro features for 7 days after signup. Reverts to Free. |
-| Pro | ~$12-15 one-time | Full customization, all export formats, batch, templates, unlimited history |
-| Subscription | ~$5-7/month | Everything in Pro + dynamic QR codes, scan analytics, code management (25 active codes) |
-
 ## Quick Start
 
 ```bash
@@ -96,18 +67,6 @@ qr-foundry/
 │   │   └── db/                 # SQLite database (history, templates)
 │   └── Cargo.toml
 └── CLAUDE.md                   # This file
-
-# Shared plans and product docs live in the parent directory: ../plans/
-# ../plans/PLAN.md                         — Plan index (start here)
-# ../plans/architecture/FEATURES.md       — Master feature list, user stories, status
-# ../plans/architecture/ARCHITECTURE.md   — System-wide architecture
-# ../plans/architecture/product-spec.md   — Original product specification
-# ../plans/services/app.md                — Desktop + Web App implementation phases
-# ../plans/services/worker.md             — Redirect Worker implementation phases
-# ../plans/services/billing-api.md        — Billing API implementation phases
-# ../plans/services/marketing-site.md     — Marketing site implementation phases
-# ../plans/design/mockups.md              — Marketing site design mockups
-# ../plans/design/qr-forge-mockup.jsx     — React UI mockup component
 ```
 
 ### Code sharing: Desktop + Web
@@ -142,29 +101,6 @@ Vite path aliases (`@platform/*`) resolve to the correct platform at build time.
 - [x] Templates (save/load styles)
 - [x] QR scanner/decoder
 - [x] QR validation (scan and verify content matches)
-
-**IMPORTANT: Update shared docs whenever a feature or change is implemented.**
-These docs are the source of truth across all QR Foundry repos.
-After implementing a feature, fixing a bug, or making an architectural change:
-
-- **`../plans/architecture/FEATURES.md`** — Check off `[x]` completed features,
-  change `[ ]` to `[~]` for partial implementations,
-  update the summary table counts at the bottom
-- **`../plans/services/app.md`** — Check off `[x]` completed items in the
-  relevant phase, add new sub-items if implementation reveals additional work,
-  move items between phases if scope changes
-- **`../plans/PLAN.md`** — Update the status column in the Per-Service Plans
-  table if a major milestone is reached
-- **`../plans/architecture/ARCHITECTURE.md`** — Update if the system architecture,
-  data flows, API contracts, or environment configuration changes
-- If a new feature is discovered during implementation that isn't in FEATURES.md, add it
-
-### Remaining work (see `../plans/` for details)
-
-- **App** — Auth integration, feature gating, dynamic code UI, analytics dashboard, web app deployment. See [`../plans/services/app.md`](../plans/services/app.md).
-- **Worker** — Custom domain, rate limiting, production deployment. See [`../plans/services/worker.md`](../plans/services/worker.md).
-- **Billing API** — Quota writes to Worker KV, production deployment. See [`../plans/services/billing-api.md`](../plans/services/billing-api.md).
-- **Marketing Site** — Landing page, pricing, SEO, deployment. See [`../plans/services/marketing-site.md`](../plans/services/marketing-site.md).
 
 ## Validation Checklist
 
@@ -390,13 +326,3 @@ Use the validation checklist above after each change.
 - `image` - Image processing
 - `rusqlite` - SQLite database
 - `csv` - CSV parsing for batch
-
-### External Services (planned)
-
-- **Cloudflare Workers + KV** - Dynamic QR code redirects and CRUD
-- **Cloudflare Analytics Engine** - Scan analytics
-- **Stripe** - Payment processing (Pro purchases, subscriptions)
-
-## Feature Flags
-
-None currently. Feature gating by plan tier is planned (see [`../plans/services/app.md`](../plans/services/app.md) Phase 2).
