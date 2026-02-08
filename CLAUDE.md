@@ -6,12 +6,13 @@ both targets; Rust backend for desktop-only features.
 
 ## System Architecture
 
-QR Foundry is composed of five services. See [`../plans/ARCHITECTURE.md`](../plans/ARCHITECTURE.md) for the full system diagram.
+QR Foundry is composed of five services.
+See [`ARCHITECTURE.md`](../plans/architecture/ARCHITECTURE.md) for the full system diagram.
 
 | Service | Domain | Repo | Stack |
 |---------|--------|------|-------|
-| Desktop App | downloadable | `qr-foundry` (this repo) | Tauri + React |
-| Web App | `app.qr-foundry.com` | `qr-foundry` (this repo, separate build target) | React (no Tauri) |
+| Desktop App | downloadable | `qr-foundry-app` (this repo) | Tauri + React |
+| Web App | `app.qr-foundry.com` | `qr-foundry-app` (this repo, separate build target) | React (no Tauri) |
 | Redirect Worker | `qrfo.link` | `qr-foundry-worker` | Cloudflare Worker + KV |
 | Billing API | `api.qr-foundry.com` | `qr-foundry-api` | Hono + Drizzle + Turso |
 | Marketing Site | `qr-foundry.com` | `qr-foundry-site` | Astro + Tailwind (planned) |
@@ -97,16 +98,16 @@ qr-foundry/
 └── CLAUDE.md                   # This file
 
 # Shared plans and product docs live in the parent directory: ../plans/
-# ../plans/PLAN.md              — Plan index (start here)
-# ../plans/FEATURES.md          — Master feature list, user stories, status
-# ../plans/ARCHITECTURE.md      — System-wide architecture
-# ../plans/product-spec.md      — Original product specification
-# ../plans/app.md               — Desktop + Web App implementation phases
-# ../plans/worker.md            — Redirect Worker implementation phases
-# ../plans/billing-api.md       — Billing API implementation phases
-# ../plans/marketing-site.md    — Marketing site implementation phases
-# ../plans/mockups.md           — Marketing site design mockups
-# ../plans/qr-forge-mockup.jsx  — React UI mockup component
+# ../plans/PLAN.md                         — Plan index (start here)
+# ../plans/architecture/FEATURES.md       — Master feature list, user stories, status
+# ../plans/architecture/ARCHITECTURE.md   — System-wide architecture
+# ../plans/architecture/product-spec.md   — Original product specification
+# ../plans/services/app.md                — Desktop + Web App implementation phases
+# ../plans/services/worker.md             — Redirect Worker implementation phases
+# ../plans/services/billing-api.md        — Billing API implementation phases
+# ../plans/services/marketing-site.md     — Marketing site implementation phases
+# ../plans/design/mockups.md              — Marketing site design mockups
+# ../plans/design/qr-forge-mockup.jsx     — React UI mockup component
 ```
 
 ### Code sharing: Desktop + Web
@@ -146,24 +147,24 @@ Vite path aliases (`@platform/*`) resolve to the correct platform at build time.
 These docs are the source of truth across all QR Foundry repos.
 After implementing a feature, fixing a bug, or making an architectural change:
 
-- **`../plans/FEATURES.md`** — Check off `[x]` completed features,
+- **`../plans/architecture/FEATURES.md`** — Check off `[x]` completed features,
   change `[ ]` to `[~]` for partial implementations,
   update the summary table counts at the bottom
-- **`../plans/app.md`** — Check off `[x]` completed items in the relevant phase,
-  add new sub-items if implementation reveals additional work,
+- **`../plans/services/app.md`** — Check off `[x]` completed items in the
+  relevant phase, add new sub-items if implementation reveals additional work,
   move items between phases if scope changes
-- **`../plans/PLAN.md`** — Update the status column in the Per-Service Plans table
-  if a major milestone is reached
-- **`../plans/ARCHITECTURE.md`** — Update if the system architecture, data flows,
-  API contracts, or environment configuration changes
+- **`../plans/PLAN.md`** — Update the status column in the Per-Service Plans
+  table if a major milestone is reached
+- **`../plans/architecture/ARCHITECTURE.md`** — Update if the system architecture,
+  data flows, API contracts, or environment configuration changes
 - If a new feature is discovered during implementation that isn't in FEATURES.md, add it
 
 ### Remaining work (see `../plans/` for details)
 
-- **App** — Auth integration, feature gating, dynamic code UI, analytics dashboard, web app deployment. See [`../plans/app.md`](../plans/app.md).
-- **Worker** — Custom domain, rate limiting, production deployment. See [`../plans/worker.md`](../plans/worker.md).
-- **Billing API** — Quota writes to Worker KV, production deployment. See [`../plans/billing-api.md`](../plans/billing-api.md).
-- **Marketing Site** — Landing page, pricing, SEO, deployment. See [`../plans/marketing-site.md`](../plans/marketing-site.md).
+- **App** — Auth integration, feature gating, dynamic code UI, analytics dashboard, web app deployment. See [`../plans/services/app.md`](../plans/services/app.md).
+- **Worker** — Custom domain, rate limiting, production deployment. See [`../plans/services/worker.md`](../plans/services/worker.md).
+- **Billing API** — Quota writes to Worker KV, production deployment. See [`../plans/services/billing-api.md`](../plans/services/billing-api.md).
+- **Marketing Site** — Landing page, pricing, SEO, deployment. See [`../plans/services/marketing-site.md`](../plans/services/marketing-site.md).
 
 ## Validation Checklist
 
@@ -367,4 +368,4 @@ Use the validation checklist above after each change.
 
 ## Feature Flags
 
-None currently. Feature gating by plan tier is planned (see [`../plans/app.md`](../plans/app.md) Phase 2).
+None currently. Feature gating by plan tier is planned (see [`../plans/services/app.md`](../plans/services/app.md) Phase 2).
