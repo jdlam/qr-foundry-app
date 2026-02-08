@@ -6,3 +6,4 @@ export { historyAdapter, templateAdapter } from './storage';
 export { scannerAdapter } from './scanner';
 export { batchAdapter } from './batch';
 export { dragDropAdapter } from './dragdrop';
+export { authAdapter } from './auth';

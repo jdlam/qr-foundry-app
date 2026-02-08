@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import { AuthModal } from '../auth/AuthModal';
+
 type TabId = 'generator' | 'batch' | 'scanner' | 'history' | 'templates' | 'dynamic';
 
 interface SidebarProps {
@@ -10,6 +14,19 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   badge?: 'pro' | 'soon';
+}
+
+function formatTierLabel(tier: string, trialDaysRemaining?: number): string {
+  switch (tier) {
+    case 'pro_trial':
+      return `Pro Trial (${trialDaysRemaining ?? 0}d left)`;
+    case 'pro':
+      return 'Pro';
+    case 'subscription':
+      return 'Subscription';
+    default:
+      return 'Free tier';
+  }
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -89,6 +106,9 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+  const { user, plan, isLoggedIn, logout } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
   return (
     <div
       className="w-[220px] flex flex-col shrink-0 transition-colors"
@@ -150,35 +170,85 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         className="p-3 transition-colors"
         style={{ borderTop: '1px solid var(--border)' }}
       >
-        <div
-          className="flex items-center gap-2.5 p-2 rounded-sm cursor-pointer transition-colors"
-          style={{ background: 'transparent' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-bg)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-        >
+        {isLoggedIn ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2.5 p-2">
+              <div
+                className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0"
+                style={{
+                  background: 'var(--accent)',
+                  color: 'var(--accent-text, #fff)',
+                }}
+              >
+                <span className="text-xs font-bold uppercase">
+                  {user?.email?.charAt(0) ?? '?'}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div
+                  className="text-[13px] font-medium truncate"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  {user?.email}
+                </div>
+                <div
+                  className="text-[11px] font-mono"
+                  style={{ color: 'var(--text-faint)' }}
+                >
+                  {plan ? formatTierLabel(plan.tier, plan.trialDaysRemaining) : 'Free tier'}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              className="text-[11px] font-medium px-2 py-1 rounded-sm text-left transition-colors"
+              style={{ color: 'var(--text-faint)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--text-secondary)';
+                e.currentTarget.style.background = 'var(--hover-bg)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--text-faint)';
+                e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
           <div
-            className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0"
-            style={{
-              background: 'var(--panel-bg)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-faint)',
-            }}
+            className="flex items-center gap-2.5 p-2 rounded-sm cursor-pointer transition-colors"
+            style={{ background: 'transparent' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-bg)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            onClick={() => setAuthModalOpen(true)}
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <div className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Sign In
+            <div
+              className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0"
+              style={{
+                background: 'var(--panel-bg)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-faint)',
+              }}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
             </div>
-            <div className="text-[11px] font-mono" style={{ color: 'var(--text-faint)' }}>
-              Free tier
+            <div className="flex-1">
+              <div className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+                Sign In
+              </div>
+              <div className="text-[11px] font-mono" style={{ color: 'var(--text-faint)' }}>
+                Free tier
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
+
+      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
     </div>
   );
 }

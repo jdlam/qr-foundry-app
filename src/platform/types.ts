@@ -179,3 +179,11 @@ export type UnlistenFn = () => void;
 export interface DragDropAdapter {
   listen(callback: DragDropCallback): Promise<UnlistenFn>;
 }
+
+// --- Auth ---
+
+export interface AuthAdapter {
+  getToken(): Promise<string | null>;
+  setToken(token: string): Promise<void>;
+  clearToken(): Promise<void>;
+}

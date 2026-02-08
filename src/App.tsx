@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { TitleBar } from './components/layout/TitleBar';
 import { Sidebar, type TabId } from './components/layout/Sidebar';
@@ -11,6 +11,7 @@ import { BatchView } from './components/batch/BatchView';
 
 // Ensure theme is initialized
 import './stores/themeStore';
+import { useAuthStore } from './stores/authStore';
 
 function DynamicCodesPlaceholder() {
   return (
@@ -49,6 +50,10 @@ function DynamicCodesPlaceholder() {
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('generator');
+
+  useEffect(() => {
+    useAuthStore.getState().initialize();
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {

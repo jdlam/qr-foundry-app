@@ -44,4 +44,9 @@ vi.mock('@platform', () => ({
   dragDropAdapter: {
     listen: vi.fn(() => Promise.resolve(() => {})),
   },
+  authAdapter: {
+    getToken: vi.fn(() => Promise.resolve(null)),
+    setToken: vi.fn(() => Promise.resolve()),
+    clearToken: vi.fn(() => Promise.resolve()),
+  },
 }));
