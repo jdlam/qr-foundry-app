@@ -162,14 +162,13 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
       {/* Bottom section */}
       <div
-        className="transition-colors"
+        className="p-3 transition-colors"
         style={{ borderTop: '1px solid var(--border)' }}
       >
-        {/* User section */}
-        <div className="p-3">
-          {collapsed ? (
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-2">
             <div
-              className="w-8 h-8 mx-auto rounded-sm flex items-center justify-center cursor-pointer transition-colors"
+              className="w-8 h-8 rounded-sm flex items-center justify-center cursor-pointer transition-colors"
               style={{
                 background: 'var(--panel-bg)',
                 border: '1px solid var(--border)',
@@ -184,12 +183,32 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 <circle cx="12" cy="7" r="4" />
               </svg>
             </div>
-          ) : (
+            <button
+              onClick={() => setCollapsed(false)}
+              className="w-6 h-6 flex items-center justify-center rounded-sm transition-colors"
+              style={{ color: 'var(--text-faint)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--hover-bg)';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-faint)';
+              }}
+              title="Expand sidebar"
+            >
+              <svg className="w-3.5 h-3.5" style={{ transform: 'rotate(180deg)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="11 17 6 12 11 7" />
+                <polyline points="18 17 13 12 18 7" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 p-2 rounded-sm">
             <div
-              className="flex items-center gap-2.5 p-2 rounded-sm cursor-pointer transition-colors"
-              style={{ background: 'transparent' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-bg)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              className="flex items-center gap-2.5 flex-1 cursor-pointer rounded-sm transition-colors p-0"
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = ''; }}
             >
               <div
                 className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0"
@@ -213,40 +232,27 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 </div>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Collapse toggle */}
-        <div className={`px-2 pb-2 flex ${collapsed ? 'justify-center' : 'justify-end'}`}>
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="w-6 h-6 flex items-center justify-center rounded-sm transition-colors"
-            style={{ color: 'var(--text-faint)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--hover-bg)';
-              e.currentTarget.style.color = 'var(--text-secondary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = 'var(--text-faint)';
-            }}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <svg
-              className="w-3.5 h-3.5 transition-transform duration-200"
-              style={{ transform: collapsed ? 'rotate(180deg)' : undefined }}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <button
+              onClick={() => setCollapsed(true)}
+              className="w-6 h-6 flex items-center justify-center rounded-sm shrink-0 transition-colors"
+              style={{ color: 'var(--text-faint)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--hover-bg)';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-faint)';
+              }}
+              title="Collapse sidebar"
             >
-              <polyline points="11 17 6 12 11 7" />
-              <polyline points="18 17 13 12 18 7" />
-            </svg>
-          </button>
-        </div>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="11 17 6 12 11 7" />
+                <polyline points="18 17 13 12 18 7" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
