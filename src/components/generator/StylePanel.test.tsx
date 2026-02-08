@@ -117,74 +117,57 @@ describe('StylePanel', () => {
     });
   });
 
-  describe('Colors', () => {
-    it('renders foreground and background color inputs', () => {
+  describe('Foreground', () => {
+    it('renders foreground section with solid/gradient toggle', () => {
       render(<StylePanel />);
 
-      expect(screen.getByText('FG')).toBeInTheDocument();
-      expect(screen.getByText('BG')).toBeInTheDocument();
+      expect(screen.getByText('Foreground')).toBeInTheDocument();
+      expect(screen.getByText('Gradient')).toBeInTheDocument();
+      // "Solid" appears in both foreground and background toggles
+      expect(screen.getAllByText('Solid')).toHaveLength(2);
     });
 
-    it('renders color swatch elements', () => {
+    it('shows single color swatch in solid mode', () => {
       render(<StylePanel />);
 
-      // Color rows show hex values as text (defaults from qrStore)
+      // Default foreground color from qrStore
       expect(screen.getByText('#1a1a2e')).toBeInTheDocument();
-      expect(screen.getByText('#ffffff')).toBeInTheDocument();
     });
 
-    it('renders transparent background option', () => {
+    it('switches to gradient mode and shows two color swatches', () => {
       render(<StylePanel />);
 
-      expect(screen.getByText('Transparent Background')).toBeInTheDocument();
-    });
+      fireEvent.click(screen.getByText('Gradient'));
+      expect(useQrStore.getState().useGradient).toBe(true);
 
-    it('toggles transparent background', () => {
-      render(<StylePanel />);
-
-      // The transparent checkbox is a custom div, find it by its adjacent text
-      const transparentText = screen.getByText('Transparent Background');
-      const transparentToggle = transparentText.previousElementSibling;
-
-      expect(transparentToggle).toBeDefined();
-      expect(useQrStore.getState().transparentBg).toBe(false);
-
-      fireEvent.click(transparentToggle!);
-      expect(useQrStore.getState().transparentBg).toBe(true);
-
-      fireEvent.click(transparentToggle!);
-      expect(useQrStore.getState().transparentBg).toBe(false);
+      // Should show both gradient stop colors
+      expect(screen.getByText('#1a1a2e')).toBeInTheDocument();
+      expect(screen.getByText('#e94560')).toBeInTheDocument();
     });
   });
 
-  describe('Gradient', () => {
-    it('renders gradient toggle', () => {
+  describe('Background', () => {
+    it('renders background section with solid/transparent toggle', () => {
       render(<StylePanel />);
 
-      expect(screen.getByText('Gradient Fill')).toBeInTheDocument();
+      expect(screen.getByText('Background')).toBeInTheDocument();
+      expect(screen.getByText('Transparent')).toBeInTheDocument();
     });
 
-    it('toggles gradient option', () => {
+    it('shows color swatch in solid mode', () => {
       render(<StylePanel />);
 
-      // The gradient toggle is a custom toggle switch (div), find it by its adjacent text
-      const gradientText = screen.getByText('Gradient Fill');
-      const gradientToggle = gradientText.previousElementSibling;
-
-      expect(gradientToggle).toBeDefined();
-      expect(useQrStore.getState().useGradient).toBe(false);
-
-      fireEvent.click(gradientToggle!);
-      expect(useQrStore.getState().useGradient).toBe(true);
+      expect(screen.getByText('#ffffff')).toBeInTheDocument();
     });
 
-    it('shows gradient color pickers when gradient enabled', () => {
-      useQrStore.getState().setUseGradient(true);
+    it('hides color swatch in transparent mode', () => {
       render(<StylePanel />);
 
-      // Should show A and B labels for gradient colors
-      expect(screen.getByText('A')).toBeInTheDocument();
-      expect(screen.getByText('B')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('Transparent'));
+      expect(useQrStore.getState().transparentBg).toBe(true);
+
+      // Background color swatch should be gone
+      expect(screen.queryByText('#ffffff')).not.toBeInTheDocument();
     });
   });
 
