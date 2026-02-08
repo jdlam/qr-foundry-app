@@ -6,15 +6,15 @@ both targets; Rust backend for desktop-only features.
 
 ## System Architecture
 
-QR Foundry is composed of five services. See `plans/ARCHITECTURE.md` for the full system diagram.
+QR Foundry is composed of five services. See [`../plans/ARCHITECTURE.md`](../plans/ARCHITECTURE.md) for the full system diagram.
 
 | Service | Domain | Repo | Stack |
 |---------|--------|------|-------|
 | Desktop App | downloadable | `qr-foundry` (this repo) | Tauri + React |
 | Web App | `app.qr-foundry.com` | `qr-foundry` (this repo, separate build target) | React (no Tauri) |
 | Redirect Worker | `qrfo.link` | `qr-foundry-worker` | Cloudflare Worker + KV |
-| Billing API | `api.qr-foundry.com` | `qr-foundry-api` (not yet created) | TBD |
-| Marketing Site | `qr-foundry.com` | `qr-foundry-site` (not yet created) | Static (Astro/Next.js) |
+| Billing API | `api.qr-foundry.com` | `qr-foundry-api` | Hono + Drizzle + Turso |
+| Marketing Site | `qr-foundry.com` | `qr-foundry-site` | Astro + Tailwind (planned) |
 
 ### How they connect
 
@@ -42,7 +42,7 @@ npm install
 npm run tauri dev
 
 # Run web app (browser only — no Tauri needed)
-npm run dev:web          # planned, not yet implemented
+npm run dev:web          # browser-only dev (VITE_PLATFORM=web)
 
 # Type check
 npm run typecheck
@@ -54,7 +54,7 @@ npm run lint
 npm run tauri build
 
 # Build web for production
-npm run build:web        # planned, not yet implemented
+npm run build:web        # web production build (VITE_PLATFORM=web)
 ```
 
 ## Project Structure
@@ -83,9 +83,10 @@ qr-foundry/
 │   ├── api/                    # Shared API clients (planned)
 │   │   ├── billing.ts          # Billing API client (auth, plan, purchases)
 │   │   └── worker.ts           # Worker API client (CRUD, analytics)
-│   └── platform/               # Platform-specific adapters (planned)
-│       ├── tauri/              # OS keychain, native file dialogs, Tauri clipboard
-│       └── web/                # Cookie/localStorage auth, browser download, Clipboard API
+│   └── platform/               # Platform-specific adapters
+│       ├── types.ts            # Shared adapter interfaces (ExportAdapter, ClipboardAdapter, etc.)
+│       ├── tauri/              # Tauri adapters (invoke Rust commands, native file dialogs)
+│       └── web/                # Web adapters (localStorage, browser APIs, Blob downloads)
 ├── src-tauri/                  # Rust backend (desktop only)
 │   ├── src/
 │   │   ├── main.rs             # Tauri entry point
@@ -93,14 +94,19 @@ qr-foundry/
 │   │   ├── commands/           # Tauri IPC commands (export, validate, batch, scanner, etc.)
 │   │   └── db/                 # SQLite database (history, templates)
 │   └── Cargo.toml
-├── plans/                      # Architecture and implementation plans
-│   ├── ARCHITECTURE.md         # System-wide architecture and service interactions
-│   ├── app.md                  # Desktop + Web App implementation phases
-│   ├── worker.md               # Redirect Worker implementation phases
-│   ├── billing-api.md          # Billing API implementation phases
-│   ├── marketing-site.md       # Marketing site implementation phases
-│   └── qr-foundry-app-spec.md  # Full product specification
 └── CLAUDE.md                   # This file
+
+# Shared plans and product docs live in the parent directory: ../plans/
+# ../plans/PLAN.md              — Plan index (start here)
+# ../plans/FEATURES.md          — Master feature list, user stories, status
+# ../plans/ARCHITECTURE.md      — System-wide architecture
+# ../plans/product-spec.md      — Original product specification
+# ../plans/app.md               — Desktop + Web App implementation phases
+# ../plans/worker.md            — Redirect Worker implementation phases
+# ../plans/billing-api.md       — Billing API implementation phases
+# ../plans/marketing-site.md    — Marketing site implementation phases
+# ../plans/mockups.md           — Marketing site design mockups
+# ../plans/qr-forge-mockup.jsx  — React UI mockup component
 ```
 
 ### Code sharing: Desktop + Web
@@ -136,12 +142,28 @@ Vite path aliases (`@platform/*`) resolve to the correct platform at build time.
 - [x] QR scanner/decoder
 - [x] QR validation (scan and verify content matches)
 
-### Remaining work (see `plans/` for details)
+**IMPORTANT: Update shared docs whenever a feature or change is implemented.**
+These docs are the source of truth across all QR Foundry repos.
+After implementing a feature, fixing a bug, or making an architectural change:
 
-- **App** — Auth integration, feature gating, dynamic code UI, analytics dashboard, platform abstraction, web build. See `plans/app.md`.
-- **Worker** — Quota enforcement, scan analytics API, infrastructure. See `plans/worker.md`.
-- **Billing API** — Scaffold, auth, trial management, Stripe, quota management, plan tier API. See `plans/billing-api.md`.
-- **Marketing Site** — Landing page, pricing, SEO, deployment. See `plans/marketing-site.md`.
+- **`../plans/FEATURES.md`** — Check off `[x]` completed features,
+  change `[ ]` to `[~]` for partial implementations,
+  update the summary table counts at the bottom
+- **`../plans/app.md`** — Check off `[x]` completed items in the relevant phase,
+  add new sub-items if implementation reveals additional work,
+  move items between phases if scope changes
+- **`../plans/PLAN.md`** — Update the status column in the Per-Service Plans table
+  if a major milestone is reached
+- **`../plans/ARCHITECTURE.md`** — Update if the system architecture, data flows,
+  API contracts, or environment configuration changes
+- If a new feature is discovered during implementation that isn't in FEATURES.md, add it
+
+### Remaining work (see `../plans/` for details)
+
+- **App** — Auth integration, feature gating, dynamic code UI, analytics dashboard, web app deployment. See [`../plans/app.md`](../plans/app.md).
+- **Worker** — Custom domain, rate limiting, production deployment. See [`../plans/worker.md`](../plans/worker.md).
+- **Billing API** — Quota writes to Worker KV, production deployment. See [`../plans/billing-api.md`](../plans/billing-api.md).
+- **Marketing Site** — Landing page, pricing, SEO, deployment. See [`../plans/marketing-site.md`](../plans/marketing-site.md).
 
 ## Validation Checklist
 
@@ -345,4 +367,4 @@ Use the validation checklist above after each change.
 
 ## Feature Flags
 
-None currently. Feature gating by plan tier is planned (see `plans/app.md` Phase 2).
+None currently. Feature gating by plan tier is planned (see [`../plans/app.md`](../plans/app.md) Phase 2).
