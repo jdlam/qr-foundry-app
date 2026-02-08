@@ -217,10 +217,10 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         </div>
 
         {/* Collapse toggle */}
-        <div className="px-2 pb-2">
+        <div className={`px-2 pb-2 flex ${collapsed ? 'justify-center' : 'justify-end'}`}>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="w-full flex items-center justify-center py-1.5 rounded-sm transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-sm transition-colors"
             style={{ color: 'var(--text-faint)' }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--hover-bg)';
@@ -233,7 +233,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <svg
-              className="w-4 h-4 transition-transform duration-200"
+              className="w-3.5 h-3.5 transition-transform duration-200"
               style={{ transform: collapsed ? 'rotate(180deg)' : undefined }}
               viewBox="0 0 24 24"
               fill="none"
