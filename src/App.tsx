@@ -8,10 +8,12 @@ import { ScannerView } from './components/scanner/ScannerView';
 import { HistoryView } from './components/history/HistoryView';
 import { TemplatesView } from './components/templates/TemplatesView';
 import { BatchView } from './components/batch/BatchView';
+import { AuthModal } from './components/auth/AuthModal';
 
 // Ensure theme is initialized
 import './stores/themeStore';
 import { useAuthStore } from './stores/authStore';
+import { useAuthModalStore } from './stores/authModalStore';
 
 function DynamicCodesPlaceholder() {
   return (
@@ -50,6 +52,7 @@ function DynamicCodesPlaceholder() {
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('generator');
+  const authModalOpen = useAuthModalStore((s) => s.isOpen);
 
   useEffect(() => {
     useAuthStore.getState().initialize();
@@ -97,6 +100,14 @@ function App() {
             color: 'var(--text-primary)',
             fontSize: '12px',
           },
+        }}
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={(open) => {
+          if (open) useAuthModalStore.getState().open();
+          else useAuthModalStore.getState().close();
         }}
       />
     </div>

@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useQrGenerator } from '../../hooks/useQrGenerator';
 import { useValidation } from '../../hooks/useValidation';
 import { useExport } from '../../hooks/useExport';
+import { useFeatureAccess } from '../../hooks/useFeatureAccess';
 import { useQrStore } from '../../stores/qrStore';
 import { ValidationBadge } from './ValidationBadge';
 
@@ -28,6 +29,7 @@ export function Preview() {
   const store = useQrStore();
   const { exportSize, inputType, errorCorrection, content, validationState, transparentBg } = store;
 
+  const { requireAccess: requireSvgAccess } = useFeatureAccess('svg_export');
   const [copySuccess, setCopySuccess] = useState(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
@@ -254,7 +256,7 @@ export function Preview() {
 
         {/* SVG */}
         <button
-          onClick={handleExportSvg}
+          onClick={() => { if (requireSvgAccess()) handleExportSvg(); }}
           disabled={!content || isExporting}
           className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-2 rounded-sm border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           style={{

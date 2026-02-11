@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { AuthModal } from '../auth/AuthModal';
+import { useFeatureAccess } from '../../hooks/useFeatureAccess';
+import { useAuthModalStore } from '../../stores/authModalStore';
+import type { FeatureKey } from '../../api/types';
 
 type TabId = 'generator' | 'batch' | 'scanner' | 'history' | 'templates' | 'dynamic';
 
@@ -14,6 +16,7 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   badge?: 'pro' | 'soon';
+  requiredFeature?: FeatureKey;
 }
 
 function formatTierLabel(tier: string, trialDaysRemaining?: number): string {
@@ -48,6 +51,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'batch',
     label: 'Batch',
     badge: 'pro',
+    requiredFeature: 'batch_generation',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="1" />
@@ -84,6 +88,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'templates',
     label: 'Templates',
     badge: 'pro',
+    requiredFeature: 'templates',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="1" />
@@ -105,10 +110,80 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+function NavButton({
+  item,
+  isActive,
+  collapsed,
+  onTabChange,
+}: {
+  item: NavItem;
+  isActive: boolean;
+  collapsed: boolean;
+  onTabChange: (tab: TabId) => void;
+}) {
+  const featureAccess = useFeatureAccess(item.requiredFeature ?? 'basic_qr_types');
+
+  const handleClick = () => {
+    if (item.requiredFeature && !featureAccess.requireAccess()) return;
+    onTabChange(item.id);
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      title={collapsed ? item.label : undefined}
+      className="flex items-center gap-2.5 w-full text-left text-sm font-medium transition-colors rounded-sm"
+      style={{
+        padding: collapsed
+          ? '8px'
+          : isActive ? '8px 12px 8px 9px' : '8px 12px',
+        justifyContent: collapsed ? 'center' : undefined,
+        background: isActive ? 'var(--active-bg)' : 'transparent',
+        color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+        borderLeft: collapsed
+          ? undefined
+          : isActive ? '3px solid var(--accent)' : '3px solid transparent',
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.background = 'var(--hover-bg)';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--text-muted)';
+        }
+      }}
+    >
+      <span className="w-[18px] h-[18px] shrink-0 flex items-center justify-center">
+        {item.icon}
+      </span>
+      {!collapsed && (
+        <>
+          <span className="flex-1">{item.label}</span>
+          {item.badge && (
+            <span
+              className="font-mono text-[9px] font-bold uppercase tracking-wide px-[5px] py-px rounded-sm leading-snug"
+              style={{
+                background: item.badge === 'pro' ? 'var(--badge-pro-bg)' : 'var(--badge-soon-bg)',
+                color: item.badge === 'pro' ? 'var(--badge-pro-text)' : 'var(--badge-soon-text)',
+              }}
+            >
+              {item.badge === 'pro' ? 'PRO' : 'SOON'}
+            </span>
+          )}
+        </>
+      )}
+    </button>
+  );
+}
+
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { user, plan, isLoggedIn, logout } = useAuth();
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const openAuthModal = useAuthModalStore((s) => s.open);
 
   return (
     <div
@@ -121,60 +196,15 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     >
       {/* Navigation */}
       <nav className="flex-1 py-3 px-2 flex flex-col gap-0.5">
-        {NAV_ITEMS.map((item) => {
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onTabChange(item.id)}
-              title={collapsed ? item.label : undefined}
-              className="flex items-center gap-2.5 w-full text-left text-sm font-medium transition-colors rounded-sm"
-              style={{
-                padding: collapsed
-                  ? '8px'
-                  : isActive ? '8px 12px 8px 9px' : '8px 12px',
-                justifyContent: collapsed ? 'center' : undefined,
-                background: isActive ? 'var(--active-bg)' : 'transparent',
-                color: isActive ? 'var(--accent)' : 'var(--text-muted)',
-                borderLeft: collapsed
-                  ? undefined
-                  : isActive ? '3px solid var(--accent)' : '3px solid transparent',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'var(--hover-bg)';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-muted)';
-                }
-              }}
-            >
-              <span className="w-[18px] h-[18px] shrink-0 flex items-center justify-center">
-                {item.icon}
-              </span>
-              {!collapsed && (
-                <>
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <span
-                      className="font-mono text-[9px] font-bold uppercase tracking-wide px-[5px] py-px rounded-sm leading-snug"
-                      style={{
-                        background: item.badge === 'pro' ? 'var(--badge-pro-bg)' : 'var(--badge-soon-bg)',
-                        color: item.badge === 'pro' ? 'var(--badge-pro-text)' : 'var(--badge-soon-text)',
-                      }}
-                    >
-                      {item.badge === 'pro' ? 'PRO' : 'SOON'}
-                    </span>
-                  )}
-                </>
-              )}
-            </button>
-          );
-        })}
+        {NAV_ITEMS.map((item) => (
+          <NavButton
+            key={item.id}
+            item={item}
+            isActive={activeTab === item.id}
+            collapsed={collapsed}
+            onTabChange={onTabChange}
+          />
+        ))}
       </nav>
 
       {/* Bottom section */}
@@ -207,7 +237,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-bg)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--panel-bg)'; }}
-                onClick={() => setAuthModalOpen(true)}
+                onClick={openAuthModal}
                 title="Sign In"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -306,7 +336,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               className="flex items-center gap-2.5 flex-1 cursor-pointer rounded-sm transition-colors p-0"
               onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.color = ''; }}
-              onClick={() => setAuthModalOpen(true)}
+              onClick={openAuthModal}
             >
               <div
                 className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0"
@@ -353,7 +383,6 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         )}
       </div>
 
-      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
     </div>
   );
 }

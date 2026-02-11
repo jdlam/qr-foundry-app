@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from './Sidebar';
 import type { TabId } from './Sidebar';
+import { useAuthModalStore } from '../../stores/authModalStore';
 
 // Mock useAuth hook
 const mockLogout = vi.fn();
@@ -20,10 +21,10 @@ vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => mockAuthState,
 }));
 
-// Mock AuthModal to avoid pulling in dialog dependencies
-vi.mock('../auth/AuthModal', () => ({
-  AuthModal: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="auth-modal">Auth Modal</div> : null,
+// Mock sonner toast
+const mockToast = vi.fn();
+vi.mock('sonner', () => ({
+  toast: (...args: unknown[]) => mockToast(...args),
 }));
 
 describe('Sidebar', () => {
@@ -44,6 +45,8 @@ describe('Sidebar', () => {
       logout: mockLogout,
     };
     mockLogout.mockReset();
+    mockToast.mockReset();
+    useAuthModalStore.getState().close();
   });
 
   describe('Navigation items', () => {
@@ -71,7 +74,7 @@ describe('Sidebar', () => {
       expect(screen.getByText('SOON')).toBeInTheDocument();
     });
 
-    it('calls onTabChange when a nav item is clicked', () => {
+    it('calls onTabChange when an ungated nav item is clicked', () => {
       const onTabChange = vi.fn();
       render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
 
@@ -87,6 +90,84 @@ describe('Sidebar', () => {
 
       const scannerButton = screen.getByText('Scanner').closest('button');
       expect(scannerButton).toHaveStyle({ color: 'var(--accent)' });
+    });
+  });
+
+  describe('Feature gating — logged out', () => {
+    it('opens auth modal when Batch is clicked while logged out', () => {
+      const onTabChange = vi.fn();
+      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
+
+      fireEvent.click(screen.getByText('Batch'));
+      expect(onTabChange).not.toHaveBeenCalled();
+      expect(useAuthModalStore.getState().isOpen).toBe(true);
+    });
+
+    it('opens auth modal when Templates is clicked while logged out', () => {
+      const onTabChange = vi.fn();
+      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
+
+      fireEvent.click(screen.getByText('Templates'));
+      expect(onTabChange).not.toHaveBeenCalled();
+      expect(useAuthModalStore.getState().isOpen).toBe(true);
+    });
+  });
+
+  describe('Feature gating — logged in free tier', () => {
+    beforeEach(() => {
+      mockAuthState = {
+        ...mockAuthState,
+        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
+        plan: { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 },
+        isLoggedIn: true,
+        logout: mockLogout,
+      };
+    });
+
+    it('shows upgrade toast when Batch is clicked on free tier', () => {
+      const onTabChange = vi.fn();
+      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
+
+      fireEvent.click(screen.getByText('Batch'));
+      expect(onTabChange).not.toHaveBeenCalled();
+      expect(mockToast).toHaveBeenCalledWith('Upgrade to Pro to unlock this feature');
+    });
+
+    it('shows upgrade toast when Templates is clicked on free tier', () => {
+      const onTabChange = vi.fn();
+      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
+
+      fireEvent.click(screen.getByText('Templates'));
+      expect(onTabChange).not.toHaveBeenCalled();
+      expect(mockToast).toHaveBeenCalledWith('Upgrade to Pro to unlock this feature');
+    });
+  });
+
+  describe('Feature gating — pro tier', () => {
+    beforeEach(() => {
+      mockAuthState = {
+        ...mockAuthState,
+        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
+        plan: { tier: 'pro', features: ['basic_qr_types', 'batch_generation', 'templates'], maxCodes: 0 },
+        isLoggedIn: true,
+        logout: mockLogout,
+      };
+    });
+
+    it('allows Batch when pro features are available', () => {
+      const onTabChange = vi.fn();
+      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
+
+      fireEvent.click(screen.getByText('Batch'));
+      expect(onTabChange).toHaveBeenCalledWith('batch');
+    });
+
+    it('allows Templates when pro features are available', () => {
+      const onTabChange = vi.fn();
+      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
+
+      fireEvent.click(screen.getByText('Templates'));
+      expect(onTabChange).toHaveBeenCalledWith('templates');
     });
   });
 
@@ -109,10 +190,9 @@ describe('Sidebar', () => {
     it('opens auth modal when sign-in area is clicked (expanded)', () => {
       render(<Sidebar {...defaultProps} />);
 
-      // Click the sign-in area
       fireEvent.click(screen.getByText('Sign In'));
 
-      expect(screen.getByTestId('auth-modal')).toBeInTheDocument();
+      expect(useAuthModalStore.getState().isOpen).toBe(true);
     });
 
     it('opens auth modal when sign-in icon is clicked (collapsed)', () => {
@@ -121,7 +201,7 @@ describe('Sidebar', () => {
       fireEvent.click(screen.getByTitle('Collapse sidebar'));
       fireEvent.click(screen.getByTitle('Sign In'));
 
-      expect(screen.getByTestId('auth-modal')).toBeInTheDocument();
+      expect(useAuthModalStore.getState().isOpen).toBe(true);
     });
   });
 
@@ -222,7 +302,7 @@ describe('Sidebar', () => {
       expect(screen.getByText('Free tier')).toBeInTheDocument();
     });
 
-    it('still triggers onTabChange when collapsed', () => {
+    it('still triggers onTabChange for ungated tabs when collapsed', () => {
       const onTabChange = vi.fn();
       render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
 
