@@ -15,6 +15,48 @@ import './stores/themeStore';
 import { useAuthStore } from './stores/authStore';
 import { useAuthModalStore } from './stores/authModalStore';
 
+// Dev-only: expose auth simulation helpers in browser console
+if (import.meta.env.DEV) {
+  const dev = {
+    simulateFreeTier: () => useAuthStore.setState({
+      user: { id: 'dev-1', email: 'dev@test.com', createdAt: '2025-01-01' },
+      plan: { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 },
+      token: 'dev-token',
+    }),
+    simulateProTrial: (daysLeft = 5) => useAuthStore.setState({
+      user: { id: 'dev-1', email: 'dev@test.com', createdAt: '2025-01-01' },
+      plan: {
+        tier: 'pro_trial',
+        features: ['basic_qr_types', 'advanced_qr_types', 'advanced_customization', 'svg_export', 'batch_generation', 'templates', 'unlimited_history'],
+        maxCodes: 0,
+        trialDaysRemaining: daysLeft,
+      },
+      token: 'dev-token',
+    }),
+    simulatePro: () => useAuthStore.setState({
+      user: { id: 'dev-1', email: 'dev@test.com', createdAt: '2025-01-01' },
+      plan: {
+        tier: 'pro',
+        features: ['basic_qr_types', 'advanced_qr_types', 'advanced_customization', 'svg_export', 'pdf_export', 'eps_export', 'batch_generation', 'templates', 'unlimited_history', 'web_asset_pack'],
+        maxCodes: 0,
+      },
+      token: 'dev-token',
+    }),
+    simulateSubscription: () => useAuthStore.setState({
+      user: { id: 'dev-1', email: 'dev@test.com', createdAt: '2025-01-01' },
+      plan: {
+        tier: 'subscription',
+        features: ['basic_qr_types', 'advanced_qr_types', 'advanced_customization', 'svg_export', 'pdf_export', 'eps_export', 'batch_generation', 'templates', 'unlimited_history', 'web_asset_pack', 'dynamic_codes', 'analytics'],
+        maxCodes: 25,
+      },
+      token: 'dev-token',
+    }),
+    simulateLoggedOut: () => useAuthStore.setState({ user: null, plan: null, token: null }),
+  };
+  (window as unknown as Record<string, unknown>).__dev = dev;
+  console.log('[dev] Auth helpers available: __dev.simulateFreeTier(), __dev.simulateProTrial(), __dev.simulatePro(), __dev.simulateSubscription(), __dev.simulateLoggedOut()');
+}
+
 function DynamicCodesPlaceholder() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 p-12">
