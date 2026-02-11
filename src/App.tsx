@@ -20,23 +20,8 @@ if (import.meta.env.DEV) {
   const dev = {
     simulateFreeTier: () => useAuthStore.setState({
       user: { id: 'dev-1', email: 'dev@test.com', createdAt: '2025-01-01' },
-      plan: { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 },
-      token: 'dev-token',
-    }),
-    simulateProTrial: (daysLeft = 5) => useAuthStore.setState({
-      user: { id: 'dev-1', email: 'dev@test.com', createdAt: '2025-01-01' },
       plan: {
-        tier: 'pro_trial',
-        features: ['basic_qr_types', 'advanced_qr_types', 'advanced_customization', 'svg_export', 'batch_generation', 'templates', 'unlimited_history'],
-        maxCodes: 0,
-        trialDaysRemaining: daysLeft,
-      },
-      token: 'dev-token',
-    }),
-    simulatePro: () => useAuthStore.setState({
-      user: { id: 'dev-1', email: 'dev@test.com', createdAt: '2025-01-01' },
-      plan: {
-        tier: 'pro',
+        tier: 'free',
         features: ['basic_qr_types', 'advanced_qr_types', 'advanced_customization', 'svg_export', 'pdf_export', 'eps_export', 'batch_generation', 'templates', 'unlimited_history', 'web_asset_pack'],
         maxCodes: 0,
       },
@@ -54,7 +39,7 @@ if (import.meta.env.DEV) {
     simulateLoggedOut: () => useAuthStore.setState({ user: null, plan: null, token: null }),
   };
   (window as unknown as Record<string, unknown>).__dev = dev;
-  console.log('[dev] Auth helpers available: __dev.simulateFreeTier(), __dev.simulateProTrial(), __dev.simulatePro(), __dev.simulateSubscription(), __dev.simulateLoggedOut()');
+  console.log('[dev] Auth helpers available: __dev.simulateFreeTier(), __dev.simulateSubscription(), __dev.simulateLoggedOut()');
 }
 
 function DynamicCodesPlaceholder() {

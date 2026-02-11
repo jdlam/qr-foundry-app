@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { useQrGenerator } from '../../hooks/useQrGenerator';
 import { useValidation } from '../../hooks/useValidation';
 import { useExport } from '../../hooks/useExport';
-import { useFeatureAccess } from '../../hooks/useFeatureAccess';
 import { useQrStore } from '../../stores/qrStore';
 import { ValidationBadge } from './ValidationBadge';
 
@@ -29,7 +28,6 @@ export function Preview() {
   const store = useQrStore();
   const { exportSize, inputType, errorCorrection, content, validationState, transparentBg } = store;
 
-  const { requireAccess: requireSvgAccess } = useFeatureAccess('svg_export');
   const [copySuccess, setCopySuccess] = useState(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
@@ -256,7 +254,7 @@ export function Preview() {
 
         {/* SVG */}
         <button
-          onClick={() => { if (requireSvgAccess()) handleExportSvg(); }}
+          onClick={handleExportSvg}
           disabled={!content || isExporting}
           className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-2 rounded-sm border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
@@ -276,7 +274,6 @@ export function Preview() {
             <polyline points="8 6 2 12 8 18" />
           </svg>
           <span className="text-xs font-semibold">{exportSuccess === 'SVG saved!' ? 'Saved!' : 'SVG'}</span>
-          <span className="font-mono text-[8px] font-bold uppercase" style={{ color: 'var(--badge-pro-text)' }}>PRO</span>
         </button>
 
         {/* PDF placeholder */}
@@ -294,7 +291,6 @@ export function Preview() {
             <polyline points="14 2 14 8 20 8" />
           </svg>
           <span className="text-xs font-semibold">PDF</span>
-          <span className="font-mono text-[8px] font-bold uppercase" style={{ color: 'var(--badge-pro-text)' }}>PRO</span>
         </button>
 
         {/* Copy */}

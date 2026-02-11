@@ -1,5 +1,4 @@
 import { useQrStore } from '../../stores/qrStore';
-import { useFeatureAccess } from '../../hooks/useFeatureAccess';
 import {
   formatWifi,
   formatVCard,
@@ -10,17 +9,16 @@ import {
   formatUrl,
 } from '../../lib/formatters';
 import type { QrType } from '../../types/qr';
-import type { FeatureKey } from '../../api/types';
 
-const INPUT_TYPES: { id: QrType; label: string; badge?: 'pro'; requiredFeature?: FeatureKey }[] = [
+const INPUT_TYPES: { id: QrType; label: string }[] = [
   { id: 'url', label: 'URL' },
   { id: 'text', label: 'Text' },
   { id: 'wifi', label: 'WiFi' },
   { id: 'phone', label: 'Phone' },
-  { id: 'vcard', label: 'vCard', badge: 'pro', requiredFeature: 'advanced_qr_types' },
-  { id: 'email', label: 'Email', badge: 'pro', requiredFeature: 'advanced_qr_types' },
-  { id: 'sms', label: 'SMS', badge: 'pro', requiredFeature: 'advanced_qr_types' },
-  { id: 'geo', label: 'Location', badge: 'pro', requiredFeature: 'advanced_qr_types' },
+  { id: 'vcard', label: 'vCard' },
+  { id: 'email', label: 'Email' },
+  { id: 'sms', label: 'SMS' },
+  { id: 'geo', label: 'Location' },
 ];
 
 export function InputPanel() {
@@ -40,7 +38,6 @@ export function InputPanel() {
     setSmsConfig,
     setGeoConfig,
   } = useQrStore();
-  const { requireAccess: requireAdvancedTypes, hasAccess: hasAdvancedTypes } = useFeatureAccess('advanced_qr_types');
 
   const inputClassName =
     'w-full text-sm rounded-sm px-3 py-2.5 outline-none transition-all' +
@@ -370,21 +367,16 @@ export function InputPanel() {
         <div className="flex flex-wrap gap-1.5">
           {INPUT_TYPES.map((type) => {
             const isActive = inputType === type.id;
-            const isGated = !!type.requiredFeature && !hasAdvancedTypes;
             return (
               <button
                 key={type.id}
-                onClick={() => {
-                  if (type.requiredFeature && !requireAdvancedTypes()) return;
-                  setInputType(type.id);
-                }}
+                onClick={() => setInputType(type.id)}
                 className="flex items-center gap-1 rounded-sm text-[12px] font-medium transition-colors"
                 style={{
                   padding: '5px 10px',
                   background: isActive ? 'var(--active-bg)' : 'transparent',
                   color: isActive ? 'var(--accent)' : 'var(--text-muted)',
                   border: isActive ? '1px solid var(--accent)' : '1px solid var(--input-border)',
-                  opacity: isGated ? 0.6 : 1,
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
@@ -400,17 +392,6 @@ export function InputPanel() {
                 }}
               >
                 {type.label}
-                {type.badge && (
-                  <span
-                    className="font-mono text-[8px] font-bold uppercase tracking-wide px-1 py-px rounded-sm leading-none"
-                    style={{
-                      background: 'var(--badge-pro-bg)',
-                      color: 'var(--badge-pro-text)',
-                    }}
-                  >
-                    PRO
-                  </span>
-                )}
               </button>
             );
           })}

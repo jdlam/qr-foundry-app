@@ -2,45 +2,24 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { InputPanel } from './InputPanel';
 import { useQrStore } from '../../stores/qrStore';
-import { useAuthModalStore } from '../../stores/authModalStore';
 
-// Mock useAuth hook
-let mockAuthState: Record<string, unknown> = {
-  user: null,
-  plan: null,
-  isLoggedIn: false,
-  isLoading: false,
-  isAuthenticating: false,
-  login: vi.fn(),
-  signup: vi.fn(),
-  logout: vi.fn(),
-};
-
+// Mock useAuth hook (still needed by components that import it)
 vi.mock('../../hooks/useAuth', () => ({
-  useAuth: () => mockAuthState,
-}));
-
-// Mock sonner toast
-const mockToast = vi.fn();
-vi.mock('sonner', () => ({
-  toast: (...args: unknown[]) => mockToast(...args),
+  useAuth: () => ({
+    user: null,
+    plan: null,
+    isLoggedIn: false,
+    isLoading: false,
+    isAuthenticating: false,
+    login: vi.fn(),
+    signup: vi.fn(),
+    logout: vi.fn(),
+  }),
 }));
 
 describe('InputPanel', () => {
   beforeEach(() => {
     useQrStore.getState().reset();
-    mockAuthState = {
-      user: null,
-      plan: null,
-      isLoggedIn: false,
-      isLoading: false,
-      isAuthenticating: false,
-      login: vi.fn(),
-      signup: vi.fn(),
-      logout: vi.fn(),
-    };
-    mockToast.mockReset();
-    useAuthModalStore.getState().close();
   });
 
   it('renders all input type buttons', () => {
@@ -54,6 +33,12 @@ describe('InputPanel', () => {
     expect(screen.getByText('Email')).toBeInTheDocument();
     expect(screen.getByText('SMS')).toBeInTheDocument();
     expect(screen.getByText('Location')).toBeInTheDocument();
+  });
+
+  it('does not show PRO badges (all types are free)', () => {
+    render(<InputPanel />);
+
+    expect(screen.queryByText('PRO')).not.toBeInTheDocument();
   });
 
   it('shows URL input by default', () => {
@@ -88,106 +73,39 @@ describe('InputPanel', () => {
     expect(screen.getByPlaceholderText('+1 555-0123')).toBeInTheDocument();
   });
 
-  describe('Feature gating — logged out', () => {
-    it('opens auth modal when vCard is clicked while logged out', () => {
-      render(<InputPanel />);
+  it('switches to vCard input when vCard button clicked', () => {
+    render(<InputPanel />);
 
-      fireEvent.click(screen.getByText('vCard'));
+    fireEvent.click(screen.getByText('vCard'));
 
-      expect(useAuthModalStore.getState().isOpen).toBe(true);
-      // Should NOT switch to vCard input
-      expect(screen.queryByPlaceholderText('First name')).not.toBeInTheDocument();
-    });
-
-    it('opens auth modal when Email is clicked while logged out', () => {
-      render(<InputPanel />);
-
-      fireEvent.click(screen.getByText('Email'));
-
-      expect(useAuthModalStore.getState().isOpen).toBe(true);
-      expect(screen.queryByPlaceholderText('Recipient email')).not.toBeInTheDocument();
-    });
-
-    it('opens auth modal when SMS is clicked while logged out', () => {
-      render(<InputPanel />);
-
-      fireEvent.click(screen.getByText('SMS'));
-
-      expect(useAuthModalStore.getState().isOpen).toBe(true);
-    });
-
-    it('opens auth modal when Location is clicked while logged out', () => {
-      render(<InputPanel />);
-
-      fireEvent.click(screen.getByText('Location'));
-
-      expect(useAuthModalStore.getState().isOpen).toBe(true);
-    });
+    expect(screen.getByPlaceholderText('First name')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Last name')).toBeInTheDocument();
   });
 
-  describe('Feature gating — free tier', () => {
-    beforeEach(() => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
-    });
+  it('switches to Email input when Email button clicked', () => {
+    render(<InputPanel />);
 
-    it('shows upgrade toast when vCard is clicked on free tier', () => {
-      render(<InputPanel />);
+    fireEvent.click(screen.getByText('Email'));
 
-      fireEvent.click(screen.getByText('vCard'));
-
-      expect(mockToast).toHaveBeenCalledWith('Upgrade to Pro to unlock this feature');
-    });
+    expect(screen.getByPlaceholderText('Recipient email')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Subject')).toBeInTheDocument();
   });
 
-  describe('Feature gating — pro tier', () => {
-    beforeEach(() => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_qr_types'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
-    });
+  it('switches to SMS input when SMS button clicked', () => {
+    render(<InputPanel />);
 
-    it('allows switching to Email input when has access', () => {
-      render(<InputPanel />);
+    fireEvent.click(screen.getByText('SMS'));
 
-      fireEvent.click(screen.getByText('Email'));
+    expect(screen.getByPlaceholderText('Phone number')).toBeInTheDocument();
+  });
 
-      expect(screen.getByPlaceholderText('Recipient email')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Subject')).toBeInTheDocument();
-    });
+  it('switches to Location input when Location button clicked', () => {
+    render(<InputPanel />);
 
-    it('allows switching to vCard input when has access', () => {
-      render(<InputPanel />);
+    fireEvent.click(screen.getByText('Location'));
 
-      fireEvent.click(screen.getByText('vCard'));
-
-      expect(screen.getByPlaceholderText('First name')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Last name')).toBeInTheDocument();
-    });
-
-    it('allows switching to SMS input when has access', () => {
-      render(<InputPanel />);
-
-      fireEvent.click(screen.getByText('SMS'));
-
-      expect(screen.getByPlaceholderText('Phone number')).toBeInTheDocument();
-    });
-
-    it('allows switching to Location input when has access', () => {
-      render(<InputPanel />);
-
-      fireEvent.click(screen.getByText('Location'));
-
-      expect(screen.getByPlaceholderText('Latitude')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Longitude')).toBeInTheDocument();
-    });
+    expect(screen.getByPlaceholderText('Latitude')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Longitude')).toBeInTheDocument();
   });
 
   it('updates content when URL input changes', () => {
@@ -288,12 +206,6 @@ describe('InputPanel', () => {
 
   describe('Email input', () => {
     beforeEach(() => {
-      // Need pro access to reach email input via store
-      mockAuthState = {
-        ...mockAuthState,
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_qr_types'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
       useQrStore.getState().setInputType('email');
     });
 
@@ -336,12 +248,6 @@ describe('InputPanel', () => {
 
   describe('vCard input', () => {
     beforeEach(() => {
-      // Need pro access to reach vcard input via store
-      mockAuthState = {
-        ...mockAuthState,
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_qr_types'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
       useQrStore.getState().setInputType('vcard');
     });
 

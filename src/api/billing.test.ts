@@ -104,7 +104,7 @@ describe('billingApi', () => {
 
   describe('plan', () => {
     it('returns plan data', async () => {
-      const plan = { tier: 'pro_trial', features: ['batch'], maxCodes: 25, trialDaysRemaining: 5 };
+      const plan = { tier: 'subscription', features: ['batch', 'dynamic_codes'], maxCodes: 25 };
       mockFetch.mockResolvedValue(jsonResponse({ success: true, data: plan }));
 
       const result = await billingApi.plan('tok');

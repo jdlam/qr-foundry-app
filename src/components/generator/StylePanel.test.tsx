@@ -2,28 +2,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { StylePanel } from './StylePanel';
 import { useQrStore } from '../../stores/qrStore';
-import { useAuthModalStore } from '../../stores/authModalStore';
 import { dragDropAdapter, filesystemAdapter } from '@platform';
 import { optimizeImage, blobToDataUrl } from '../../lib/imageOptimizer';
 import type { DragDropCallback } from '../../platform/types';
 
 vi.mock('../../lib/imageOptimizer');
-
-// Mock useAuth hook
-let mockAuthState: Record<string, unknown> = {
-  user: null,
-  plan: null,
-  isLoggedIn: false,
-  isLoading: false,
-  isAuthenticating: false,
-  login: vi.fn(),
-  signup: vi.fn(),
-  logout: vi.fn(),
-};
-
-vi.mock('../../hooks/useAuth', () => ({
-  useAuth: () => mockAuthState,
-}));
 
 // Mock sonner toast
 const mockToast = vi.fn();
@@ -45,18 +28,7 @@ describe('StylePanel', () => {
     useQrStore.getState().reset();
     mockDragDropHandler = null;
     mockUnlisten = vi.fn();
-    mockAuthState = {
-      user: null,
-      plan: null,
-      isLoggedIn: false,
-      isLoading: false,
-      isAuthenticating: false,
-      login: vi.fn(),
-      signup: vi.fn(),
-      logout: vi.fn(),
-    };
     mockToast.mockReset();
-    useAuthModalStore.getState().close();
 
     mockListen.mockImplementation(async (callback) => {
       mockDragDropHandler = callback;
@@ -83,15 +55,6 @@ describe('StylePanel', () => {
   });
 
   describe('Dot Style', () => {
-    beforeEach(() => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_customization'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
-    });
-
     it('renders dot style section', () => {
       render(<StylePanel />);
 
@@ -101,7 +64,6 @@ describe('StylePanel', () => {
     it('updates dot style when Dots button clicked', () => {
       render(<StylePanel />);
 
-      // Click the "Dots" style button (unique title)
       fireEvent.click(screen.getByTitle('Dots'));
       expect(useQrStore.getState().dotStyle).toBe('dots');
     });
@@ -143,15 +105,6 @@ describe('StylePanel', () => {
   });
 
   describe('Eye Style', () => {
-    beforeEach(() => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_customization'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
-    });
-
     it('renders eye style section', () => {
       render(<StylePanel />);
 
@@ -191,12 +144,6 @@ describe('StylePanel', () => {
     });
 
     it('switches to gradient mode and shows two color swatches', () => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_customization'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
       render(<StylePanel />);
 
       fireEvent.click(screen.getByText('Gradient'));
@@ -674,12 +621,6 @@ describe('StylePanel', () => {
     });
 
     it('opens gradient color swatches when in gradient mode', () => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_customization'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
       render(<StylePanel />);
 
       fireEvent.click(screen.getByText('Gradient'));
@@ -708,13 +649,7 @@ describe('StylePanel', () => {
       expect(screen.getByText('Transparent')).toBeInTheDocument();
     });
 
-    it('toggles foreground between solid and gradient when has access', () => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_customization'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
+    it('toggles foreground between solid and gradient', () => {
       render(<StylePanel />);
 
       // Start in solid mode
@@ -745,111 +680,32 @@ describe('StylePanel', () => {
     });
   });
 
-  describe('Feature gating', () => {
-    it('shows PRO badges on Dot Style, Eye Style, Foreground, and Logo sections when logged out', () => {
-      render(<StylePanel />);
-
-      // PRO badges appear on section labels
-      const proBadges = screen.getAllByText('PRO');
-      expect(proBadges.length).toBeGreaterThanOrEqual(4);
-    });
-
-    it('does not show PRO badges when user has advanced_customization', () => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_customization'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
+  describe('No feature gating (all styles are free)', () => {
+    it('does not show PRO badges on any section', () => {
       render(<StylePanel />);
 
       expect(screen.queryByText('PRO')).not.toBeInTheDocument();
     });
 
-    it('opens auth modal when non-square dot style is clicked while logged out', () => {
-      // Set to square first so we can detect it staying unchanged
-      useQrStore.getState().setDotStyle('square');
+    it('allows non-square dot styles without auth', () => {
       render(<StylePanel />);
 
       fireEvent.click(screen.getByTitle('Dots'));
-
-      expect(useAuthModalStore.getState().isOpen).toBe(true);
-      expect(useQrStore.getState().dotStyle).toBe('square'); // unchanged
+      expect(useQrStore.getState().dotStyle).toBe('dots');
     });
 
-    it('allows square dot style when logged out', () => {
-      render(<StylePanel />);
-
-      const squareButtons = screen.getAllByTitle('Square');
-      fireEvent.click(squareButtons[0]); // first Square is dot style
-
-      expect(useQrStore.getState().dotStyle).toBe('square');
-      expect(useAuthModalStore.getState().isOpen).toBe(false);
-    });
-
-    it('opens auth modal when non-square eye style is clicked while logged out', () => {
-      // Set to square first
-      useQrStore.getState().setCornerSquareStyle('square');
+    it('allows non-square eye styles without auth', () => {
       render(<StylePanel />);
 
       const circleButtons = screen.getAllByTitle('Circle');
       fireEvent.click(circleButtons[0]);
-
-      expect(useAuthModalStore.getState().isOpen).toBe(true);
-      expect(useQrStore.getState().cornerSquareStyle).toBe('square'); // unchanged
+      expect(useQrStore.getState().cornerSquareStyle).not.toBe('square');
     });
 
-    it('opens auth modal when gradient is selected while logged out', () => {
+    it('allows gradient without auth', () => {
       render(<StylePanel />);
 
       fireEvent.click(screen.getByText('Gradient'));
-
-      expect(useAuthModalStore.getState().isOpen).toBe(true);
-      expect(useQrStore.getState().useGradient).toBe(false); // unchanged
-    });
-
-    it('shows upgrade toast when non-square dot style is clicked on free tier', () => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
-      // Set to square first
-      useQrStore.getState().setDotStyle('square');
-      render(<StylePanel />);
-
-      fireEvent.click(screen.getByTitle('Dots'));
-
-      expect(mockToast).toHaveBeenCalledWith('Upgrade to Pro to unlock this feature');
-      expect(useQrStore.getState().dotStyle).toBe('square');
-    });
-
-    it('allows non-square dot style when has advanced_customization', () => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_customization'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
-      render(<StylePanel />);
-
-      fireEvent.click(screen.getByTitle('Dots'));
-
-      expect(useQrStore.getState().dotStyle).toBe('dots');
-    });
-
-    it('allows gradient when has advanced_customization', () => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro', features: ['basic_qr_types', 'advanced_customization'], maxCodes: 0 },
-        isLoggedIn: true,
-      };
-      render(<StylePanel />);
-
-      fireEvent.click(screen.getByText('Gradient'));
-
       expect(useQrStore.getState().useGradient).toBe(true);
     });
   });

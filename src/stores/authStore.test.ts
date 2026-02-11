@@ -15,7 +15,7 @@ const validToken = fakeJwt({ sub: '1', email: 'a@b.com', iat: 0, exp: futureExp 
 const expiredToken = fakeJwt({ sub: '1', email: 'a@b.com', iat: 0, exp: pastExp });
 
 const mockUser = { id: '1', email: 'a@b.com', createdAt: '2025-01-01' };
-const mockPlan = { tier: 'pro_trial' as const, features: ['batch'], maxCodes: 25, trialDaysRemaining: 7 };
+const mockPlan = { tier: 'subscription' as const, features: ['batch', 'dynamic_codes'], maxCodes: 25 };
 
 // Mock the billing API
 vi.mock('../api/billing', () => ({

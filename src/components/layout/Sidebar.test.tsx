@@ -21,12 +21,6 @@ vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => mockAuthState,
 }));
 
-// Mock sonner toast
-const mockToast = vi.fn();
-vi.mock('sonner', () => ({
-  toast: (...args: unknown[]) => mockToast(...args),
-}));
-
 describe('Sidebar', () => {
   const defaultProps = {
     activeTab: 'generator' as TabId,
@@ -45,7 +39,6 @@ describe('Sidebar', () => {
       logout: mockLogout,
     };
     mockLogout.mockReset();
-    mockToast.mockReset();
     useAuthModalStore.getState().close();
   });
 
@@ -61,20 +54,19 @@ describe('Sidebar', () => {
       expect(screen.getByText('Dynamic Codes')).toBeInTheDocument();
     });
 
-    it('shows PRO badge on Batch and Templates', () => {
-      render(<Sidebar {...defaultProps} />);
-
-      const proBadges = screen.getAllByText('PRO');
-      expect(proBadges).toHaveLength(2);
-    });
-
     it('shows SOON badge on Dynamic Codes', () => {
       render(<Sidebar {...defaultProps} />);
 
       expect(screen.getByText('SOON')).toBeInTheDocument();
     });
 
-    it('calls onTabChange when an ungated nav item is clicked', () => {
+    it('does not show PRO badges (all features are free)', () => {
+      render(<Sidebar {...defaultProps} />);
+
+      expect(screen.queryByText('PRO')).not.toBeInTheDocument();
+    });
+
+    it('calls onTabChange when any nav item is clicked', () => {
       const onTabChange = vi.fn();
       render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
 
@@ -83,6 +75,12 @@ describe('Sidebar', () => {
 
       fireEvent.click(screen.getByText('History'));
       expect(onTabChange).toHaveBeenCalledWith('history');
+
+      fireEvent.click(screen.getByText('Batch'));
+      expect(onTabChange).toHaveBeenCalledWith('batch');
+
+      fireEvent.click(screen.getByText('Templates'));
+      expect(onTabChange).toHaveBeenCalledWith('templates');
     });
 
     it('highlights the active tab', () => {
@@ -90,84 +88,6 @@ describe('Sidebar', () => {
 
       const scannerButton = screen.getByText('Scanner').closest('button');
       expect(scannerButton).toHaveStyle({ color: 'var(--accent)' });
-    });
-  });
-
-  describe('Feature gating — logged out', () => {
-    it('opens auth modal when Batch is clicked while logged out', () => {
-      const onTabChange = vi.fn();
-      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
-
-      fireEvent.click(screen.getByText('Batch'));
-      expect(onTabChange).not.toHaveBeenCalled();
-      expect(useAuthModalStore.getState().isOpen).toBe(true);
-    });
-
-    it('opens auth modal when Templates is clicked while logged out', () => {
-      const onTabChange = vi.fn();
-      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
-
-      fireEvent.click(screen.getByText('Templates'));
-      expect(onTabChange).not.toHaveBeenCalled();
-      expect(useAuthModalStore.getState().isOpen).toBe(true);
-    });
-  });
-
-  describe('Feature gating — logged in free tier', () => {
-    beforeEach(() => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 },
-        isLoggedIn: true,
-        logout: mockLogout,
-      };
-    });
-
-    it('shows upgrade toast when Batch is clicked on free tier', () => {
-      const onTabChange = vi.fn();
-      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
-
-      fireEvent.click(screen.getByText('Batch'));
-      expect(onTabChange).not.toHaveBeenCalled();
-      expect(mockToast).toHaveBeenCalledWith('Upgrade to Pro to unlock this feature');
-    });
-
-    it('shows upgrade toast when Templates is clicked on free tier', () => {
-      const onTabChange = vi.fn();
-      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
-
-      fireEvent.click(screen.getByText('Templates'));
-      expect(onTabChange).not.toHaveBeenCalled();
-      expect(mockToast).toHaveBeenCalledWith('Upgrade to Pro to unlock this feature');
-    });
-  });
-
-  describe('Feature gating — pro tier', () => {
-    beforeEach(() => {
-      mockAuthState = {
-        ...mockAuthState,
-        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro', features: ['basic_qr_types', 'batch_generation', 'templates'], maxCodes: 0 },
-        isLoggedIn: true,
-        logout: mockLogout,
-      };
-    });
-
-    it('allows Batch when pro features are available', () => {
-      const onTabChange = vi.fn();
-      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
-
-      fireEvent.click(screen.getByText('Batch'));
-      expect(onTabChange).toHaveBeenCalledWith('batch');
-    });
-
-    it('allows Templates when pro features are available', () => {
-      const onTabChange = vi.fn();
-      render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
-
-      fireEvent.click(screen.getByText('Templates'));
-      expect(onTabChange).toHaveBeenCalledWith('templates');
     });
   });
 
@@ -209,7 +129,7 @@ describe('Sidebar', () => {
     beforeEach(() => {
       mockAuthState = {
         user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
-        plan: { tier: 'pro_trial', features: [], maxCodes: 25, trialDaysRemaining: 5 },
+        plan: { tier: 'subscription', features: [], maxCodes: 25 },
         isLoggedIn: true,
         isLoading: false,
         isAuthenticating: false,
@@ -223,7 +143,17 @@ describe('Sidebar', () => {
       render(<Sidebar {...defaultProps} />);
 
       expect(screen.getByText('test@example.com')).toBeInTheDocument();
-      expect(screen.getByText('Pro Trial (5d left)')).toBeInTheDocument();
+      expect(screen.getByText('Subscription')).toBeInTheDocument();
+    });
+
+    it('shows Free tier for free plan', () => {
+      mockAuthState = {
+        ...mockAuthState,
+        plan: { tier: 'free', features: [], maxCodes: 0 },
+      };
+      render(<Sidebar {...defaultProps} />);
+
+      expect(screen.getByText('Free tier')).toBeInTheDocument();
     });
 
     it('shows sign out button when expanded', () => {
@@ -274,7 +204,6 @@ describe('Sidebar', () => {
 
       fireEvent.click(screen.getByTitle('Collapse sidebar'));
 
-      expect(screen.queryByText('PRO')).not.toBeInTheDocument();
       expect(screen.queryByText('SOON')).not.toBeInTheDocument();
     });
 
@@ -302,7 +231,7 @@ describe('Sidebar', () => {
       expect(screen.getByText('Free tier')).toBeInTheDocument();
     });
 
-    it('still triggers onTabChange for ungated tabs when collapsed', () => {
+    it('still triggers onTabChange when collapsed', () => {
       const onTabChange = vi.fn();
       render(<Sidebar {...defaultProps} onTabChange={onTabChange} />);
 

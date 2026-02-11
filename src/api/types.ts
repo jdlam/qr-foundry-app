@@ -12,7 +12,18 @@ export type FeatureKey =
   | 'dynamic_codes'
   | 'analytics';
 
-export const FREE_FEATURES: FeatureKey[] = ['basic_qr_types'];
+export const FREE_FEATURES: FeatureKey[] = [
+  'basic_qr_types',
+  'advanced_qr_types',
+  'advanced_customization',
+  'svg_export',
+  'pdf_export',
+  'eps_export',
+  'batch_generation',
+  'templates',
+  'unlimited_history',
+  'web_asset_pack',
+];
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -20,13 +31,12 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-export type PlanTier = 'free' | 'pro_trial' | 'pro' | 'subscription';
+export type PlanTier = 'free' | 'subscription';
 
 export interface UserPlan {
   tier: PlanTier;
   features: string[];
   maxCodes: number;
-  trialDaysRemaining?: number;
 }
 
 export interface AuthUser {

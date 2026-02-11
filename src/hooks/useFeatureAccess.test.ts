@@ -43,23 +43,29 @@ describe('useFeatureAccess', () => {
 
   describe('hasAccess', () => {
     it('returns true when feature is in plan', () => {
-      mockAuthState.plan = { tier: 'pro', features: ['basic_qr_types', 'svg_export'], maxCodes: 0 };
+      mockAuthState.plan = { tier: 'subscription', features: ['basic_qr_types', 'dynamic_codes'], maxCodes: 25 };
       mockAuthState.isLoggedIn = true;
 
-      const { result } = renderHook(() => useFeatureAccess('svg_export'));
+      const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
       expect(result.current.hasAccess).toBe(true);
     });
 
     it('returns false when feature is not in plan', () => {
-      mockAuthState.plan = { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 };
+      mockAuthState.plan = { tier: 'free', features: ['basic_qr_types', 'svg_export'], maxCodes: 0 };
       mockAuthState.isLoggedIn = true;
 
-      const { result } = renderHook(() => useFeatureAccess('svg_export'));
+      const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
       expect(result.current.hasAccess).toBe(false);
     });
 
-    it('returns false when not logged in for non-free features', () => {
+    it('returns true for free features when not logged in', () => {
+      // All QR features are free now — FREE_FEATURES includes svg_export etc.
       const { result } = renderHook(() => useFeatureAccess('svg_export'));
+      expect(result.current.hasAccess).toBe(true);
+    });
+
+    it('returns false for dynamic_codes when not logged in', () => {
+      const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
       expect(result.current.hasAccess).toBe(false);
     });
 
@@ -71,28 +77,28 @@ describe('useFeatureAccess', () => {
 
   describe('requireAccess', () => {
     it('returns true when has access', () => {
-      mockAuthState.plan = { tier: 'pro', features: ['basic_qr_types', 'svg_export'], maxCodes: 0 };
+      mockAuthState.plan = { tier: 'subscription', features: ['basic_qr_types', 'dynamic_codes'], maxCodes: 25 };
       mockAuthState.isLoggedIn = true;
 
-      const { result } = renderHook(() => useFeatureAccess('svg_export'));
+      const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
       expect(result.current.requireAccess()).toBe(true);
       expect(useAuthModalStore.getState().isOpen).toBe(false);
       expect(mockToast).not.toHaveBeenCalled();
     });
 
     it('opens auth modal when not logged in', () => {
-      const { result } = renderHook(() => useFeatureAccess('svg_export'));
+      const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
       expect(result.current.requireAccess()).toBe(false);
       expect(useAuthModalStore.getState().isOpen).toBe(true);
     });
 
     it('shows toast when logged in without access', () => {
-      mockAuthState.plan = { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 };
+      mockAuthState.plan = { tier: 'free', features: ['basic_qr_types', 'svg_export'], maxCodes: 0 };
       mockAuthState.isLoggedIn = true;
 
-      const { result } = renderHook(() => useFeatureAccess('svg_export'));
+      const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
       expect(result.current.requireAccess()).toBe(false);
-      expect(mockToast).toHaveBeenCalledWith('Upgrade to Pro to unlock this feature');
+      expect(mockToast).toHaveBeenCalledWith('Subscribe to unlock this feature');
     });
 
     it('returns true for free features when not logged in', () => {

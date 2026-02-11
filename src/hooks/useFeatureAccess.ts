@@ -17,7 +17,7 @@ export function useFeatureAccess(feature: FeatureKey) {
       return false;
     }
 
-    toast('Upgrade to Pro to unlock this feature');
+    toast('Subscribe to unlock this feature');
     return false;
   };
 

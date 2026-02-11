@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { useFeatureAccess } from '../../hooks/useFeatureAccess';
 import { useAuthModalStore } from '../../stores/authModalStore';
-import type { FeatureKey } from '../../api/types';
 
 type TabId = 'generator' | 'batch' | 'scanner' | 'history' | 'templates' | 'dynamic';
 
@@ -15,16 +13,11 @@ interface NavItem {
   id: TabId;
   label: string;
   icon: React.ReactNode;
-  badge?: 'pro' | 'soon';
-  requiredFeature?: FeatureKey;
+  badge?: 'soon';
 }
 
-function formatTierLabel(tier: string, trialDaysRemaining?: number): string {
+function formatTierLabel(tier: string): string {
   switch (tier) {
-    case 'pro_trial':
-      return `Pro Trial (${trialDaysRemaining ?? 0}d left)`;
-    case 'pro':
-      return 'Pro';
     case 'subscription':
       return 'Subscription';
     default:
@@ -50,8 +43,6 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'batch',
     label: 'Batch',
-    badge: 'pro',
-    requiredFeature: 'batch_generation',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="1" />
@@ -87,8 +78,6 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: 'templates',
     label: 'Templates',
-    badge: 'pro',
-    requiredFeature: 'templates',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="1" />
@@ -121,16 +110,9 @@ function NavButton({
   collapsed: boolean;
   onTabChange: (tab: TabId) => void;
 }) {
-  const featureAccess = useFeatureAccess(item.requiredFeature ?? 'basic_qr_types');
-
-  const handleClick = () => {
-    if (item.requiredFeature && !featureAccess.requireAccess()) return;
-    onTabChange(item.id);
-  };
-
   return (
     <button
-      onClick={handleClick}
+      onClick={() => onTabChange(item.id)}
       title={collapsed ? item.label : undefined}
       className="flex items-center gap-2.5 w-full text-left text-sm font-medium transition-colors rounded-sm"
       style={{
@@ -167,11 +149,11 @@ function NavButton({
             <span
               className="font-mono text-[9px] font-bold uppercase tracking-wide px-[5px] py-px rounded-sm leading-snug"
               style={{
-                background: item.badge === 'pro' ? 'var(--badge-pro-bg)' : 'var(--badge-soon-bg)',
-                color: item.badge === 'pro' ? 'var(--badge-pro-text)' : 'var(--badge-soon-text)',
+                background: 'var(--badge-soon-bg)',
+                color: 'var(--badge-soon-text)',
               }}
             >
-              {item.badge === 'pro' ? 'PRO' : 'SOON'}
+              SOON
             </span>
           )}
         </>
@@ -291,7 +273,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                   className="text-[11px] font-mono"
                   style={{ color: 'var(--text-faint)' }}
                 >
-                  {plan ? formatTierLabel(plan.tier, plan.trialDaysRemaining) : 'Free tier'}
+                  {plan ? formatTierLabel(plan.tier) : 'Free tier'}
                 </div>
               </div>
               <button
