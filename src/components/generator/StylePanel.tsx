@@ -3,6 +3,7 @@ import { HexColorPicker } from 'react-colorful';
 import { filesystemAdapter } from '@platform';
 import { toast } from 'sonner';
 import { useQrStore } from '../../stores/qrStore';
+import { useFeatureAccess } from '../../hooks/useFeatureAccess';
 import { useTauriDragDrop } from '../../hooks/useTauriDragDrop';
 import { optimizeImage, blobToDataUrl } from '../../lib/imageOptimizer';
 import type { DotStyle, CornerSquareStyle, ErrorCorrection } from '../../types/qr';
@@ -278,6 +279,7 @@ export function StylePanel() {
     setErrorCorrection,
   } = useQrStore();
 
+  const { hasAccess: hasAdvancedCustomization, requireAccess: requireAdvancedCustomization } = useFeatureAccess('advanced_customization');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
 
@@ -403,51 +405,75 @@ export function StylePanel() {
 
       {/* Dot Style */}
       <div>
-        <div className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex items-center gap-1.5 text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
           Dot Style
+          {!hasAdvancedCustomization && (
+            <span className="font-mono text-[8px] font-bold uppercase tracking-wide px-1 py-px rounded-sm leading-none" style={{ background: 'var(--badge-pro-bg)', color: 'var(--badge-pro-text)' }}>PRO</span>
+          )}
         </div>
         <div className="flex gap-1.5">
-          {DOT_STYLES.map((s) => (
-            <StyleButton
-              key={s.id}
-              active={dotStyle === s.id}
-              onClick={() => setDotStyle(s.id)}
-              title={s.name}
-            >
-              <span className="w-[18px] h-[18px]">{s.svg}</span>
-            </StyleButton>
-          ))}
+          {DOT_STYLES.map((s) => {
+            const isGated = s.id !== 'square' && !hasAdvancedCustomization;
+            return (
+              <StyleButton
+                key={s.id}
+                active={dotStyle === s.id}
+                onClick={() => {
+                  if (s.id !== 'square' && !requireAdvancedCustomization()) return;
+                  setDotStyle(s.id);
+                }}
+                title={s.name}
+              >
+                <span className="w-[18px] h-[18px]" style={{ opacity: isGated ? 0.5 : 1 }}>{s.svg}</span>
+              </StyleButton>
+            );
+          })}
         </div>
       </div>
 
       {/* Corner Style */}
       <div>
-        <div className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex items-center gap-1.5 text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
           Eye Style
+          {!hasAdvancedCustomization && (
+            <span className="font-mono text-[8px] font-bold uppercase tracking-wide px-1 py-px rounded-sm leading-none" style={{ background: 'var(--badge-pro-bg)', color: 'var(--badge-pro-text)' }}>PRO</span>
+          )}
         </div>
         <div className="flex gap-1.5">
-          {CORNER_STYLES.map((s) => (
-            <StyleButton
-              key={s.id}
-              active={cornerSquareStyle === s.id}
-              onClick={() => setCornerSquareStyle(s.id)}
-              title={s.name}
-            >
-              <span className="w-[18px] h-[18px]">{s.svg}</span>
-            </StyleButton>
-          ))}
+          {CORNER_STYLES.map((s) => {
+            const isGated = s.id !== 'square' && !hasAdvancedCustomization;
+            return (
+              <StyleButton
+                key={s.id}
+                active={cornerSquareStyle === s.id}
+                onClick={() => {
+                  if (s.id !== 'square' && !requireAdvancedCustomization()) return;
+                  setCornerSquareStyle(s.id);
+                }}
+                title={s.name}
+              >
+                <span className="w-[18px] h-[18px]" style={{ opacity: isGated ? 0.5 : 1 }}>{s.svg}</span>
+              </StyleButton>
+            );
+          })}
         </div>
       </div>
 
       {/* Foreground */}
       <div>
-        <div className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex items-center gap-1.5 text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
           Foreground
+          {!hasAdvancedCustomization && (
+            <span className="font-mono text-[8px] font-bold uppercase tracking-wide px-1 py-px rounded-sm leading-none" style={{ background: 'var(--badge-pro-bg)', color: 'var(--badge-pro-text)' }}>PRO</span>
+          )}
         </div>
         <ModeToggle
           options={[{ id: 'solid', label: 'Solid' }, { id: 'gradient', label: 'Gradient' }]}
           value={useGradient ? 'gradient' : 'solid'}
-          onChange={(id) => setUseGradient(id === 'gradient')}
+          onChange={(id) => {
+            if (id === 'gradient' && !requireAdvancedCustomization()) return;
+            setUseGradient(id === 'gradient');
+          }}
         />
         {useGradient ? (
           <div className="flex gap-2">
@@ -496,8 +522,11 @@ export function StylePanel() {
 
       {/* Logo */}
       <div>
-        <div className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex items-center gap-1.5 text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
           Logo / Image
+          {!hasAdvancedCustomization && (
+            <span className="font-mono text-[8px] font-bold uppercase tracking-wide px-1 py-px rounded-sm leading-none" style={{ background: 'var(--badge-pro-bg)', color: 'var(--badge-pro-text)' }}>PRO</span>
+          )}
         </div>
         <input
           ref={fileInputRef}
@@ -587,9 +616,9 @@ export function StylePanel() {
         ) : (
           <>
             <div
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => { if (requireAdvancedCustomization()) fileInputRef.current?.click(); }}
               onDragOver={(e) => e.preventDefault()}
-              onDrop={handleLogoDrop}
+              onDrop={(e) => { if (!hasAdvancedCustomization) { e.preventDefault(); requireAdvancedCustomization(); return; } handleLogoDrop(e); }}
               className="h-20 flex flex-col items-center justify-center gap-1 cursor-pointer rounded-sm border-2 border-dashed transition-colors"
               style={{
                 background: isTauriDragging ? 'var(--accent-bg-tint)' : logoError ? 'rgba(239, 68, 68, 0.05)' : 'var(--dropzone-bg)',

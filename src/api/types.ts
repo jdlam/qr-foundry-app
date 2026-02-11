@@ -1,3 +1,19 @@
+export type FeatureKey =
+  | 'basic_qr_types'
+  | 'advanced_qr_types'
+  | 'advanced_customization'
+  | 'svg_export'
+  | 'pdf_export'
+  | 'eps_export'
+  | 'batch_generation'
+  | 'templates'
+  | 'unlimited_history'
+  | 'web_asset_pack'
+  | 'dynamic_codes'
+  | 'analytics';
+
+export const FREE_FEATURES: FeatureKey[] = ['basic_qr_types'];
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;

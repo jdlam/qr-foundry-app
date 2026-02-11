@@ -1,14 +1,21 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Preview } from './Preview';
 import { useQrStore } from '../../stores/qrStore';
+import { useAuthModalStore } from '../../stores/authModalStore';
 
 // Mock the hooks that use platform adapters
+const mockSvgBlob = {
+  text: vi.fn().mockResolvedValue('<svg></svg>'),
+  type: 'image/svg+xml',
+};
+const mockGetBlob = vi.fn().mockResolvedValue(mockSvgBlob);
+
 vi.mock('../../hooks/useQrGenerator', () => ({
   useQrGenerator: () => ({
     getDataUrl: vi.fn().mockResolvedValue('data:image/png;base64,test'),
     getValidationDataUrl: vi.fn().mockResolvedValue('data:image/png;base64,test'),
-    getBlob: vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/png' })),
+    getBlob: mockGetBlob,
   }),
 }));
 
@@ -29,9 +36,46 @@ vi.mock('../../hooks/useExport', () => ({
   }),
 }));
 
+// Mock useAuth hook
+let mockAuthState: Record<string, unknown> = {
+  user: null,
+  plan: null,
+  isLoggedIn: false,
+  isLoading: false,
+  isAuthenticating: false,
+  login: vi.fn(),
+  signup: vi.fn(),
+  logout: vi.fn(),
+};
+
+vi.mock('../../hooks/useAuth', () => ({
+  useAuth: () => mockAuthState,
+}));
+
+// Mock sonner toast
+const mockToast = vi.fn();
+vi.mock('sonner', () => ({
+  toast: Object.assign((...args: unknown[]) => mockToast(...args), {
+    success: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
 describe('Preview', () => {
   beforeEach(() => {
     useQrStore.getState().reset();
+    mockAuthState = {
+      user: null,
+      plan: null,
+      isLoggedIn: false,
+      isLoading: false,
+      isAuthenticating: false,
+      login: vi.fn(),
+      signup: vi.fn(),
+      logout: vi.fn(),
+    };
+    mockToast.mockReset();
+    useAuthModalStore.getState().close();
   });
 
   describe('transparent background', () => {
@@ -126,6 +170,49 @@ describe('Preview', () => {
       expect(copyButton).not.toBeDisabled();
       expect(pngButton).not.toBeDisabled();
       expect(svgButton).not.toBeDisabled();
+    });
+  });
+
+  describe('SVG export gating', () => {
+    it('opens auth modal when SVG is clicked while logged out', () => {
+      useQrStore.getState().setContent('https://example.com');
+      render(<Preview />);
+
+      fireEvent.click(screen.getByText('SVG').closest('button')!);
+
+      expect(useAuthModalStore.getState().isOpen).toBe(true);
+    });
+
+    it('shows upgrade toast when SVG is clicked on free tier', () => {
+      mockAuthState = {
+        ...mockAuthState,
+        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
+        plan: { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 },
+        isLoggedIn: true,
+      };
+      useQrStore.getState().setContent('https://example.com');
+      render(<Preview />);
+
+      fireEvent.click(screen.getByText('SVG').closest('button')!);
+
+      expect(mockToast).toHaveBeenCalledWith('Upgrade to Pro to unlock this feature');
+    });
+
+    it('allows SVG export when user has svg_export feature', () => {
+      mockAuthState = {
+        ...mockAuthState,
+        user: { id: '1', email: 'test@example.com', createdAt: '2025-01-01' },
+        plan: { tier: 'pro', features: ['basic_qr_types', 'svg_export'], maxCodes: 0 },
+        isLoggedIn: true,
+      };
+      useQrStore.getState().setContent('https://example.com');
+      render(<Preview />);
+
+      fireEvent.click(screen.getByText('SVG').closest('button')!);
+
+      // Should NOT open auth modal or show toast
+      expect(useAuthModalStore.getState().isOpen).toBe(false);
+      expect(mockToast).not.toHaveBeenCalled();
     });
   });
 
