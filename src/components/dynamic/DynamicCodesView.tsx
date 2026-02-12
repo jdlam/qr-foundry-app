@@ -6,9 +6,12 @@ import { useAuthModalStore } from '../../stores/authModalStore';
 import { useAuth } from '../../hooks/useAuth';
 import { CreateCodeForm } from './CreateCodeForm';
 import { QuotaBar } from './QuotaBar';
+import { AnalyticsView } from './AnalyticsView';
+import { AnalyticsOverview } from './AnalyticsOverview';
 import type { DynamicQRRecord, CodeStatus, UpdateCodeRequest } from '../../api/types';
 
-type RightPanelView = 'empty' | 'detail' | 'create';
+type RightPanelView = 'empty' | 'detail' | 'create' | 'code-analytics' | 'overview';
+type LeftPanelMode = 'codes' | 'analytics';
 
 const STATUS_COLORS: Record<CodeStatus, string> = {
   active: 'var(--success, #22c55e)',
@@ -60,6 +63,7 @@ export function DynamicCodesView() {
   } = useDynamicCodes();
 
   const [rightPanel, setRightPanel] = useState<RightPanelView>('empty');
+  const [leftMode, setLeftMode] = useState<LeftPanelMode>('codes');
   const [editingUrl, setEditingUrl] = useState('');
   const [editingLabel, setEditingLabel] = useState('');
 
@@ -133,6 +137,25 @@ export function DynamicCodesView() {
     }
   }, [selectedCode]);
 
+  const handleViewCodeAnalytics = useCallback(() => {
+    if (!selectedCode) return;
+    setRightPanel('code-analytics');
+  }, [selectedCode]);
+
+  const handleBackFromAnalytics = useCallback(() => {
+    setRightPanel(selectedCode ? 'detail' : 'empty');
+  }, [selectedCode]);
+
+  const handleSwitchToOverview = useCallback(() => {
+    setLeftMode('analytics');
+    setRightPanel('overview');
+  }, []);
+
+  const handleSwitchToCodes = useCallback(() => {
+    setLeftMode('codes');
+    setRightPanel(selectedCode ? 'detail' : 'empty');
+  }, [selectedCode]);
+
   const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setStatusFilter(value === 'all' ? null : value as CodeStatus);
@@ -190,15 +213,41 @@ export function DynamicCodesView() {
         style={{ borderRight: '1px solid var(--border)' }}
       >
         <div className="p-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          {/* Codes / Analytics toggle */}
+          <div className="flex gap-1 mb-3">
+            {(['codes', 'analytics'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={mode === 'codes' ? handleSwitchToCodes : handleSwitchToOverview}
+                className="flex-1 text-[11px] font-semibold py-1.5 rounded-sm transition-colors uppercase tracking-wide"
+                style={{
+                  background: leftMode === mode ? 'var(--active-bg)' : 'transparent',
+                  color: leftMode === mode ? 'var(--accent)' : 'var(--text-muted)',
+                  border: leftMode === mode ? '1px solid var(--accent)' : '1px solid var(--input-border)',
+                }}
+                onMouseEnter={(e) => {
+                  if (leftMode !== mode) { e.currentTarget.style.background = 'var(--hover-bg)'; e.currentTarget.style.color = 'var(--text-secondary)'; }
+                }}
+                onMouseLeave={(e) => {
+                  if (leftMode !== mode) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }
+                }}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center justify-between mb-2">
             <div
               className="font-mono text-[11px] font-semibold uppercase tracking-[0.06em]"
               style={{ color: 'var(--text-muted)' }}
             >
-              Dynamic Codes{usage ? ` (${usage.active}/${usage.limit})` : ''}
+              {leftMode === 'codes'
+                ? `Dynamic Codes${usage ? ` (${usage.active}/${usage.limit})` : ''}`
+                : 'Analytics Overview'}
             </div>
           </div>
-          <div className="flex gap-2">
+          {leftMode === 'codes' && <div className="flex gap-2">
             <select
               value={statusFilter ?? 'all'}
               onChange={handleFilterChange}
@@ -229,7 +278,7 @@ export function DynamicCodesView() {
             >
               + New
             </button>
-          </div>
+          </div>}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -288,7 +337,11 @@ export function DynamicCodesView() {
 
       {/* Right Panel */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
-        {rightPanel === 'create' ? (
+        {rightPanel === 'code-analytics' && selectedCode ? (
+          <AnalyticsView shortCode={selectedCode.shortCode} onBack={handleBackFromAnalytics} />
+        ) : rightPanel === 'overview' ? (
+          <AnalyticsOverview onBack={handleSwitchToCodes} />
+        ) : rightPanel === 'create' ? (
           <CreateCodeForm
             isCreating={isCreating}
             onSubmit={handleCreate}
@@ -423,6 +476,21 @@ export function DynamicCodesView() {
                 {isDeleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
+
+            {/* View Analytics */}
+            <button
+              onClick={handleViewCodeAnalytics}
+              className="w-full py-2 rounded-sm text-sm font-semibold border transition-all"
+              style={{
+                background: 'var(--btn-secondary-bg)',
+                borderColor: 'var(--border)',
+                color: 'var(--text-secondary)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-faint)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+            >
+              View Analytics
+            </button>
 
             {/* Quota */}
             {usage && (
