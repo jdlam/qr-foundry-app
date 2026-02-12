@@ -17,10 +17,15 @@ export function handleSessionExpired() {
   if (fired) return;
   fired = true;
   toast.error('Session expired — please sign in again');
-  onExpired?.();
+  try {
+    onExpired?.();
+  } catch {
+    // Swallow handler errors to keep session expiry handling resilient
+  }
 }
 
 export function isSessionExpired(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false;
-  return 'status' in err && (err as { status: number }).status === 401;
+  const status = (err as { status?: unknown }).status;
+  return typeof status === 'number' && status === 401;
 }
