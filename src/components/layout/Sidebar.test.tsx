@@ -57,6 +57,7 @@ describe('Sidebar', () => {
     it('does not show SOON or PRO badges (dynamic codes is live, all features are free)', () => {
       render(<Sidebar {...defaultProps} />);
 
+      expect(screen.queryByText('SOON')).not.toBeInTheDocument();
       expect(screen.queryByText('PRO')).not.toBeInTheDocument();
     });
 

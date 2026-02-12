@@ -97,6 +97,7 @@ export function DynamicCodesView() {
   const handleSaveChanges = useCallback(async () => {
     if (!selectedCode) return;
     const trimmedUrl = editingUrl.trim();
+    if (!trimmedUrl) return;
     const trimmedLabel = editingLabel.trim();
     const changes: UpdateCodeRequest = {};
     if (trimmedUrl !== selectedCode.destinationUrl) changes.destinationUrl = trimmedUrl;
@@ -122,10 +123,14 @@ export function DynamicCodesView() {
     }
   }, [selectedCode, deleteCode]);
 
-  const handleCopyUrl = useCallback(() => {
+  const handleCopyUrl = useCallback(async () => {
     if (!selectedCode) return;
-    navigator.clipboard.writeText(`https://qrfo.link/${selectedCode.shortCode}`);
-    toast.success('Short URL copied');
+    try {
+      await navigator.clipboard.writeText(`https://qrfo.link/${selectedCode.shortCode}`);
+      toast.success('Short URL copied');
+    } catch {
+      toast.error('Failed to copy to clipboard');
+    }
   }, [selectedCode]);
 
   const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -378,8 +383,8 @@ export function DynamicCodesView() {
             {hasChanges && (
               <button
                 onClick={handleSaveChanges}
-                disabled={isUpdating}
-                className="w-full py-2.5 rounded-sm text-sm font-semibold transition-all disabled:opacity-50"
+                disabled={isUpdating || !editingUrl.trim()}
+                className="w-full py-2.5 rounded-sm text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   background: 'var(--accent)',
                   color: 'var(--btn-primary-text)',
