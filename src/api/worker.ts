@@ -61,13 +61,13 @@ export const workerApi = {
   },
 
   async getCode(token: string, shortCode: string): Promise<DynamicQRRecord> {
-    return request<DynamicQRRecord>(`/api/codes/${shortCode}`, {
+    return request<DynamicQRRecord>(`/api/codes/${encodeURIComponent(shortCode)}`, {
       headers: authHeaders(token),
     });
   },
 
   async updateCode(token: string, shortCode: string, body: UpdateCodeRequest): Promise<DynamicQRRecord> {
-    return request<DynamicQRRecord>(`/api/codes/${shortCode}`, {
+    return request<DynamicQRRecord>(`/api/codes/${encodeURIComponent(shortCode)}`, {
       method: 'PUT',
       headers: authHeaders(token),
       body: JSON.stringify(body),
@@ -75,7 +75,7 @@ export const workerApi = {
   },
 
   async deleteCode(token: string, shortCode: string): Promise<{ deleted: string }> {
-    return request<{ deleted: string }>(`/api/codes/${shortCode}`, {
+    return request<{ deleted: string }>(`/api/codes/${encodeURIComponent(shortCode)}`, {
       method: 'DELETE',
       headers: authHeaders(token),
     });
@@ -89,7 +89,7 @@ export const workerApi = {
 
   async getCodeAnalytics(token: string, shortCode: string, params?: AnalyticsParams): Promise<ScanAnalyticsResponse> {
     const query = buildAnalyticsQuery(params);
-    return request<ScanAnalyticsResponse>(`/api/analytics/${shortCode}${query}`, {
+    return request<ScanAnalyticsResponse>(`/api/analytics/${encodeURIComponent(shortCode)}${query}`, {
       headers: authHeaders(token),
     });
   },
