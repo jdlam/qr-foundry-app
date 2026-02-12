@@ -1,8 +1,8 @@
 import { toast } from 'sonner';
 
-type Handler = () => void;
+type Handler = (() => void) | null;
 
-let onExpired: Handler | null = null;
+let onExpired: Handler = null;
 let fired = false;
 
 export function registerSessionExpiredHandler(handler: Handler) {

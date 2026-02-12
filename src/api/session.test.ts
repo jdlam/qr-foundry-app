@@ -58,7 +58,7 @@ describe('session', () => {
     });
 
     it('does not throw when no handler is registered', () => {
-      registerSessionExpiredHandler(null as unknown as () => void);
+      registerSessionExpiredHandler(null);
       expect(() => handleSessionExpired()).not.toThrow();
       expect(toast.error).toHaveBeenCalledOnce();
     });

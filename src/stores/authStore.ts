@@ -150,5 +150,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 // Register session expired handler — called by API clients on 401
 registerSessionExpiredHandler(() => {
-  useAuthStore.getState().logout();
+  void useAuthStore.getState().logout().catch(() => {});
 });
