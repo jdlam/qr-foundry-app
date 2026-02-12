@@ -68,6 +68,7 @@ export function DateRangeSelector({ dateRange, granularity, onDateRangeChange, o
         onChange={(e) => onDateRangeChange({ ...dateRange, start: e.target.value })}
         className={inputClassName}
         style={inputStyle}
+        aria-label="Start date"
       />
       <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>to</span>
       <input
@@ -76,12 +77,14 @@ export function DateRangeSelector({ dateRange, granularity, onDateRangeChange, o
         onChange={(e) => onDateRangeChange({ ...dateRange, end: e.target.value })}
         className={inputClassName}
         style={inputStyle}
+        aria-label="End date"
       />
 
       {/* Granularity */}
       <select
         value={granularity}
         onChange={(e) => onGranularityChange(e.target.value as Granularity)}
+        aria-label="Granularity"
         className={`${inputClassName} cursor-pointer appearance-none`}
         style={{
           ...inputStyle,

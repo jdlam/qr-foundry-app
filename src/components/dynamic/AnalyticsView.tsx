@@ -129,13 +129,13 @@ export function AnalyticsView({ shortCode, onBack }: AnalyticsViewProps) {
             <BarChart items={codeAnalytics.topCities.map((c) => ({ label: c.name, value: c.count }))} />
           </div>
 
-          {/* Top Referers */}
+          {/* Top Referrers */}
           <div>
             <div
               className="font-mono text-[11px] font-semibold uppercase tracking-[0.06em] mb-2"
               style={{ color: 'var(--text-muted)' }}
             >
-              Top Referers
+              Top Referrers
             </div>
             <BarChart items={codeAnalytics.topReferers.map((r) => ({ label: r.name, value: r.count }))} />
           </div>
