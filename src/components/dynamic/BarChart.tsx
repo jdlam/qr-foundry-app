@@ -23,8 +23,8 @@ export function BarChart({ items, maxItems = 10 }: BarChartProps) {
 
   return (
     <div className="space-y-1.5">
-      {displayed.map((item) => (
-        <div key={item.label} className="flex items-center gap-2">
+      {displayed.map((item, index) => (
+        <div key={`${item.label}-${index}`} className="flex items-center gap-2">
           <div className="w-24 shrink-0 text-right">
             <div className="text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>{item.label}</div>
             {item.subLabel && (

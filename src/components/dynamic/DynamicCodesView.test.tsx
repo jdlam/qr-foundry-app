@@ -12,6 +12,14 @@ vi.mock('../../api/worker', () => ({
     createCode: vi.fn(),
     updateCode: vi.fn(),
     deleteCode: vi.fn(),
+    getCodeAnalytics: vi.fn().mockResolvedValue({
+      shortCode: 'abc', period: { start: '2025-01-01', end: '2025-01-31' },
+      totalScans: 42, scansOverTime: [], topCountries: [], topCities: [], topReferers: [],
+    }),
+    getAnalyticsOverview: vi.fn().mockResolvedValue({
+      period: { start: '2025-01-01', end: '2025-01-31' },
+      totalScans: 100, scansOverTime: [], topCodes: [], topCountries: [],
+    }),
   },
   WorkerApiError: class WorkerApiError extends Error {
     status: number;
@@ -147,6 +155,33 @@ describe('DynamicCodesView', () => {
       render(<DynamicCodesView />);
       fireEvent.click(screen.getByText('abc'));
       expect(screen.getByText('3 / 25 used')).toBeInTheDocument();
+    });
+
+    it('switches to analytics overview when analytics toggle is clicked', async () => {
+      render(<DynamicCodesView />);
+      fireEvent.click(screen.getByText('analytics'));
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Back to codes' })).toBeInTheDocument();
+      });
+    });
+
+    it('shows per-code analytics when View Analytics is clicked, and returns to detail on back', async () => {
+      useDynamicCodesStore.getState().setCodes([makeCode('abc')]);
+      render(<DynamicCodesView />);
+
+      // Select a code
+      fireEvent.click(screen.getByText('abc'));
+      expect(screen.getByText('View Analytics')).toBeInTheDocument();
+
+      // Click View Analytics
+      fireEvent.click(screen.getByText('View Analytics'));
+      await waitFor(() => {
+        expect(screen.getByText('Analytics: abc')).toBeInTheDocument();
+      });
+
+      // Click back button
+      fireEvent.click(screen.getByRole('button', { name: 'Back to code detail' }));
+      expect(screen.getByText('qrfo.link/abc')).toBeInTheDocument();
     });
   });
 });
