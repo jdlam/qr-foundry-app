@@ -70,8 +70,7 @@ describe('AnalyticsOverview', () => {
     const onBack = vi.fn();
     render(<AnalyticsOverview onBack={onBack} />);
 
-    const backButtons = screen.getAllByRole('button');
-    backButtons[0].click();
+    screen.getByRole('button', { name: 'Back to codes' }).click();
     expect(onBack).toHaveBeenCalled();
   });
 });

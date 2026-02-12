@@ -28,6 +28,7 @@ export function AnalyticsOverview({ onBack }: AnalyticsOverviewProps) {
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
+          aria-label="Back to codes"
           className="p-1 rounded-sm transition-colors"
           style={{ color: 'var(--text-faint)' }}
           onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}

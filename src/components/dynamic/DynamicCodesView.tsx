@@ -78,6 +78,7 @@ export function DynamicCodesView() {
     selectCode(code);
     setEditingUrl(code.destinationUrl);
     setEditingLabel(code.label || '');
+    setLeftMode('codes');
     setRightPanel('detail');
   }, [selectCode]);
 

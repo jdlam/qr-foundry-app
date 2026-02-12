@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { Granularity } from '../../api/types';
 
 interface DateRangeSelectorProps {
@@ -25,7 +26,7 @@ const PRESETS = [
 
 export function DateRangeSelector({ dateRange, granularity, onDateRangeChange, onGranularityChange }: DateRangeSelectorProps) {
   const inputClassName = 'text-xs rounded-sm px-2 py-1 outline-none border';
-  const inputStyle: React.CSSProperties = {
+  const inputStyle: CSSProperties = {
     background: 'var(--input-bg)',
     borderColor: 'var(--input-border)',
     color: 'var(--text-secondary)',

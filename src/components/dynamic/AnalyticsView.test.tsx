@@ -72,9 +72,7 @@ describe('AnalyticsView', () => {
     const onBack = vi.fn();
     render(<AnalyticsView shortCode="abc" onBack={onBack} />);
 
-    const backButtons = screen.getAllByRole('button');
-    // First button is the back button
-    backButtons[0].click();
+    screen.getByRole('button', { name: 'Back to code detail' }).click();
     expect(onBack).toHaveBeenCalled();
   });
 
