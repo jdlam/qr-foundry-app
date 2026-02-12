@@ -50,7 +50,7 @@ describe('workerApi', () => {
 
   describe('listCodes', () => {
     it('sends GET without filter', async () => {
-      const data = [{ shortCode: 'abc', destinationUrl: 'https://a.com', status: 'active' }];
+      const data = [{ shortCode: 'abc', destinationUrl: 'https://a.com', status: 'active', createdAt: '2025-01-01', updatedAt: '2025-01-01', ownerId: 'u1' }];
       mockFetch.mockResolvedValue(jsonResponse({ success: true, data }));
 
       const result = await workerApi.listCodes('tok');
@@ -78,7 +78,7 @@ describe('workerApi', () => {
 
   describe('getCode', () => {
     it('fetches a single code by shortCode', async () => {
-      const data = { shortCode: 'abc', destinationUrl: 'https://a.com', status: 'active' };
+      const data = { shortCode: 'abc', destinationUrl: 'https://a.com', status: 'active', createdAt: '2025-01-01', updatedAt: '2025-01-01', ownerId: 'u1' };
       mockFetch.mockResolvedValue(jsonResponse({ success: true, data }));
 
       const result = await workerApi.getCode('tok', 'abc');
@@ -104,7 +104,7 @@ describe('workerApi', () => {
 
   describe('updateCode', () => {
     it('sends PUT with body', async () => {
-      const data = { shortCode: 'abc', destinationUrl: 'https://new.com', status: 'active' };
+      const data = { shortCode: 'abc', destinationUrl: 'https://new.com', status: 'active', createdAt: '2025-01-01', updatedAt: '2025-01-02', ownerId: 'u1' };
       mockFetch.mockResolvedValue(jsonResponse({ success: true, data }));
 
       const result = await workerApi.updateCode('tok', 'abc', { destinationUrl: 'https://new.com' });
@@ -121,7 +121,7 @@ describe('workerApi', () => {
     });
 
     it('can pause a code', async () => {
-      const data = { shortCode: 'abc', status: 'paused' };
+      const data = { shortCode: 'abc', destinationUrl: 'https://a.com', status: 'paused', createdAt: '2025-01-01', updatedAt: '2025-01-02', ownerId: 'u1' };
       mockFetch.mockResolvedValue(jsonResponse({ success: true, data }));
 
       await workerApi.updateCode('tok', 'abc', { status: 'paused' });
@@ -171,7 +171,7 @@ describe('workerApi', () => {
 
   describe('getCodeAnalytics', () => {
     it('fetches per-code analytics without params', async () => {
-      const data = { shortCode: 'abc', totalScans: 100, scansOverTime: [], topCountries: [], topCities: [], topReferers: [] };
+      const data = { shortCode: 'abc', totalScans: 100, period: { start: '2025-01-01', end: '2025-02-01' }, scansOverTime: [], topCountries: [], topCities: [], topReferers: [] };
       mockFetch.mockResolvedValue(jsonResponse({ success: true, data }));
 
       const result = await workerApi.getCodeAnalytics('tok', 'abc');
@@ -197,7 +197,7 @@ describe('workerApi', () => {
 
   describe('getAnalyticsOverview', () => {
     it('fetches overview analytics', async () => {
-      const data = { totalScans: 500, scansOverTime: [], topCodes: [], topCountries: [] };
+      const data = { totalScans: 500, period: { start: '2025-01-01', end: '2025-02-01' }, scansOverTime: [], topCodes: [], topCountries: [] };
       mockFetch.mockResolvedValue(jsonResponse({ success: true, data }));
 
       const result = await workerApi.getAnalyticsOverview('tok');

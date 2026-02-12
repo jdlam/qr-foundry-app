@@ -83,7 +83,7 @@ export interface CreateCodeRequest {
 
 export interface UpdateCodeRequest {
   destinationUrl?: string;
-  status?: 'active' | 'paused';
+  status?: Exclude<CodeStatus, 'expired'>;
   label?: string | null;
   expiresAt?: string | null;
   password?: string | null;
