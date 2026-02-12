@@ -27,8 +27,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!res.ok || !body.success) {
     const error = new ApiError(body.error || `Request failed with status ${res.status}`, res.status);
     if (res.status === 401) {
-      const headers = options.headers as Record<string, string> | undefined;
-      if (headers?.['Authorization']) {
+      const headers = new Headers(options.headers ?? undefined);
+      if (headers.has('Authorization')) {
         handleSessionExpired();
       }
     }
