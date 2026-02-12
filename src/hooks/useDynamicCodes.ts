@@ -53,23 +53,24 @@ export function useDynamicCodes() {
     if (!token) return null;
 
     useDynamicCodesStore.setState({ isCreating: true });
+    let createdCode: DynamicQRRecord | null = null;
     try {
       const code = await workerApi.createCode(token, body);
       useDynamicCodesStore.getState().addCodeToList(code);
       useDynamicCodesStore.getState().setSelectedCode(code);
       toast.success(`Created: qrfo.link/${code.shortCode}`);
-      // Refresh usage after creation
-      const usage = await workerApi.getUsage(token);
-      useDynamicCodesStore.getState().setUsage(usage);
-      return code;
+      createdCode = code;
     } catch (err) {
       const message = err instanceof WorkerApiError ? err.message : 'Failed to create code';
       toast.error(message);
-      return null;
     } finally {
       useDynamicCodesStore.setState({ isCreating: false });
     }
-  }, []);
+    if (createdCode) {
+      fetchUsage().catch(() => {});
+    }
+    return createdCode;
+  }, [fetchUsage]);
 
   const updateCode = useCallback(async (shortCode: string, body: UpdateCodeRequest): Promise<boolean> => {
     const token = getToken();
@@ -95,22 +96,23 @@ export function useDynamicCodes() {
     if (!token) return false;
 
     useDynamicCodesStore.setState({ isDeleting: true });
+    let deleted = false;
     try {
       await workerApi.deleteCode(token, shortCode);
       useDynamicCodesStore.getState().removeCodeFromList(shortCode);
       toast.success('Code deleted');
-      // Refresh usage after deletion
-      const usage = await workerApi.getUsage(token);
-      useDynamicCodesStore.getState().setUsage(usage);
-      return true;
+      deleted = true;
     } catch (err) {
       const message = err instanceof WorkerApiError ? err.message : 'Failed to delete code';
       toast.error(message);
-      return false;
     } finally {
       useDynamicCodesStore.setState({ isDeleting: false });
     }
-  }, []);
+    if (deleted) {
+      fetchUsage().catch(() => {});
+    }
+    return deleted;
+  }, [fetchUsage]);
 
   const selectCode = useCallback((code: DynamicQRRecord | null) => {
     useDynamicCodesStore.getState().setSelectedCode(code);

@@ -6,7 +6,7 @@ import { useAuthModalStore } from '../../stores/authModalStore';
 import { useAuth } from '../../hooks/useAuth';
 import { CreateCodeForm } from './CreateCodeForm';
 import { QuotaBar } from './QuotaBar';
-import type { DynamicQRRecord, CodeStatus } from '../../api/types';
+import type { DynamicQRRecord, CodeStatus, UpdateCodeRequest } from '../../api/types';
 
 type RightPanelView = 'empty' | 'detail' | 'create';
 
@@ -96,7 +96,7 @@ export function DynamicCodesView() {
 
   const handleSaveChanges = useCallback(async () => {
     if (!selectedCode) return;
-    const changes: Record<string, string | null> = {};
+    const changes: UpdateCodeRequest = {};
     if (editingUrl !== selectedCode.destinationUrl) changes.destinationUrl = editingUrl;
     if ((editingLabel || '') !== (selectedCode.label || '')) {
       changes.label = editingLabel || null;
