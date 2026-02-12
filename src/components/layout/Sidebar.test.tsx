@@ -54,15 +54,10 @@ describe('Sidebar', () => {
       expect(screen.getByText('Dynamic Codes')).toBeInTheDocument();
     });
 
-    it('shows SOON badge on Dynamic Codes', () => {
+    it('does not show SOON or PRO badges (dynamic codes is live, all features are free)', () => {
       render(<Sidebar {...defaultProps} />);
 
-      expect(screen.getByText('SOON')).toBeInTheDocument();
-    });
-
-    it('does not show PRO badges (all features are free)', () => {
-      render(<Sidebar {...defaultProps} />);
-
+      expect(screen.queryByText('SOON')).not.toBeInTheDocument();
       expect(screen.queryByText('PRO')).not.toBeInTheDocument();
     });
 
@@ -205,6 +200,7 @@ describe('Sidebar', () => {
       fireEvent.click(screen.getByTitle('Collapse sidebar'));
 
       expect(screen.queryByText('SOON')).not.toBeInTheDocument();
+      expect(screen.queryByText('PRO')).not.toBeInTheDocument();
     });
 
     it('shows tooltips on nav items when collapsed', () => {
