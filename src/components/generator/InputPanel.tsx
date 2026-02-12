@@ -1,4 +1,5 @@
 import { useQrStore } from '../../stores/qrStore';
+import { useFeatureAccess } from '../../hooks/useFeatureAccess';
 import {
   formatWifi,
   formatVCard,
@@ -30,6 +31,9 @@ export function InputPanel() {
     emailConfig,
     smsConfig,
     geoConfig,
+    isDynamic,
+    dynamicShortCode,
+    dynamicLabel,
     setContent,
     setInputType,
     setWifiConfig,
@@ -37,7 +41,18 @@ export function InputPanel() {
     setEmailConfig,
     setSmsConfig,
     setGeoConfig,
+    setIsDynamic,
+    setDynamicLabel,
   } = useQrStore();
+
+  const { requireAccess } = useFeatureAccess('dynamic_codes');
+
+  const handleDynamicToggle = () => {
+    if (!isDynamic) {
+      if (!requireAccess()) return;
+    }
+    setIsDynamic(!isDynamic);
+  };
 
   const inputClassName =
     'w-full text-sm rounded-sm px-3 py-2.5 outline-none transition-all' +
@@ -411,6 +426,67 @@ export function InputPanel() {
           {content.length} chars
         </div>
       </div>
+
+      {/* Dynamic Code Toggle */}
+      {inputType === 'url' && (
+        <div>
+          <div className="flex items-center justify-between">
+            <div
+              className="font-mono text-[11px] font-semibold uppercase tracking-[0.06em]"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Dynamic Code
+            </div>
+            <button
+              onClick={handleDynamicToggle}
+              className="relative w-9 h-5 rounded-full transition-colors"
+              style={{
+                background: isDynamic ? 'var(--accent)' : 'var(--input-border)',
+              }}
+              role="switch"
+              aria-checked={isDynamic}
+              aria-label="Enable dynamic code"
+            >
+              <span
+                className="absolute top-0.5 w-4 h-4 rounded-full transition-transform"
+                style={{
+                  background: 'white',
+                  transform: isDynamic ? 'translateX(16px)' : 'translateX(0)',
+                  left: '2px',
+                }}
+              />
+            </button>
+          </div>
+          {isDynamic && (
+            <div className="mt-2 space-y-2">
+              <input
+                type="text"
+                value={dynamicLabel}
+                onChange={(e) => setDynamicLabel(e.target.value)}
+                placeholder="Label (optional)"
+                className={inputClassName}
+                style={inputStyle}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+              />
+              <div className="text-[11px] leading-relaxed" style={{ color: 'var(--text-faint)' }}>
+                QR will redirect via qrfo.link. You can change the destination later.
+              </div>
+              {dynamicShortCode && (
+                <div
+                  className="text-[11px] font-mono font-medium px-2 py-1 rounded-sm inline-block"
+                  style={{
+                    background: 'var(--accent-bg-tint)',
+                    color: 'var(--accent)',
+                  }}
+                >
+                  qrfo.link/{dynamicShortCode}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

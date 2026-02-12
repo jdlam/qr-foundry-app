@@ -260,6 +260,58 @@ describe('qrStore', () => {
     });
   });
 
+  describe('dynamic code fields', () => {
+    it('has correct default dynamic values', () => {
+      const state = useQrStore.getState();
+      expect(state.isDynamic).toBe(false);
+      expect(state.dynamicShortCode).toBeNull();
+      expect(state.dynamicLabel).toBe('');
+    });
+
+    it('setIsDynamic toggles dynamic mode', () => {
+      useQrStore.getState().setIsDynamic(true);
+      expect(useQrStore.getState().isDynamic).toBe(true);
+    });
+
+    it('setIsDynamic(false) clears dynamicShortCode', () => {
+      useQrStore.getState().setDynamicShortCode('abc123');
+      useQrStore.getState().setIsDynamic(false);
+      expect(useQrStore.getState().dynamicShortCode).toBeNull();
+    });
+
+    it('setIsDynamic(true) preserves existing dynamicShortCode', () => {
+      useQrStore.getState().setDynamicShortCode('abc123');
+      useQrStore.getState().setIsDynamic(true);
+      expect(useQrStore.getState().dynamicShortCode).toBe('abc123');
+    });
+
+    it('setDynamicShortCode sets short code', () => {
+      useQrStore.getState().setDynamicShortCode('abc123');
+      expect(useQrStore.getState().dynamicShortCode).toBe('abc123');
+    });
+
+    it('setDynamicLabel sets label', () => {
+      useQrStore.getState().setDynamicLabel('My Link');
+      expect(useQrStore.getState().dynamicLabel).toBe('My Link');
+    });
+
+    it('setContent resets dynamicShortCode', () => {
+      useQrStore.getState().setDynamicShortCode('abc123');
+      useQrStore.getState().setContent('https://new.com');
+      expect(useQrStore.getState().dynamicShortCode).toBeNull();
+    });
+
+    it('setInputType resets isDynamic, dynamicShortCode, and dynamicLabel', () => {
+      useQrStore.getState().setIsDynamic(true);
+      useQrStore.getState().setDynamicShortCode('abc123');
+      useQrStore.getState().setDynamicLabel('My Link');
+      useQrStore.getState().setInputType('wifi');
+      expect(useQrStore.getState().isDynamic).toBe(false);
+      expect(useQrStore.getState().dynamicShortCode).toBeNull();
+      expect(useQrStore.getState().dynamicLabel).toBe('');
+    });
+  });
+
   describe('reset', () => {
     it('resets all state to defaults', () => {
       // Change various state values
@@ -270,6 +322,9 @@ describe('qrStore', () => {
       useQrStore.getState().setUseGradient(true);
       useQrStore.getState().setLogo({ src: 'test', size: 0.2, margin: 5, shape: 'square' as const });
       useQrStore.setState({ validationState: 'pass' });
+      useQrStore.getState().setIsDynamic(true);
+      useQrStore.getState().setDynamicShortCode('abc');
+      useQrStore.getState().setDynamicLabel('label');
 
       // Reset
       useQrStore.getState().reset();
@@ -283,6 +338,9 @@ describe('qrStore', () => {
       expect(state.useGradient).toBe(false);
       expect(state.logo).toBeNull();
       expect(state.validationState).toBe('idle');
+      expect(state.isDynamic).toBe(false);
+      expect(state.dynamicShortCode).toBeNull();
+      expect(state.dynamicLabel).toBe('');
     });
   });
 });

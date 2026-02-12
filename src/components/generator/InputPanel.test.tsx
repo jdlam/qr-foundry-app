@@ -266,4 +266,35 @@ describe('InputPanel', () => {
       expect(content).toContain('END:VCARD');
     });
   });
+
+  describe('dynamic code toggle', () => {
+    it('shows toggle only for URL input type', () => {
+      render(<InputPanel />);
+      expect(screen.getByRole('switch', { name: 'Enable dynamic code' })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Text'));
+      expect(screen.queryByRole('switch', { name: 'Enable dynamic code' })).not.toBeInTheDocument();
+    });
+
+    it('shows label input when dynamic is enabled', () => {
+      useQrStore.getState().setIsDynamic(true);
+      render(<InputPanel />);
+      expect(screen.getByPlaceholderText('Label (optional)')).toBeInTheDocument();
+      expect(screen.getByText(/QR will redirect via qrfo.link/)).toBeInTheDocument();
+    });
+
+    it('shows short code badge when dynamicShortCode is set', () => {
+      useQrStore.getState().setIsDynamic(true);
+      useQrStore.getState().setDynamicShortCode('abc123');
+      render(<InputPanel />);
+      expect(screen.getByText('qrfo.link/abc123')).toBeInTheDocument();
+    });
+
+    it('hides dynamic section when not URL type even if isDynamic is true', () => {
+      useQrStore.getState().setIsDynamic(true);
+      useQrStore.getState().setInputType('wifi');
+      render(<InputPanel />);
+      expect(screen.queryByRole('switch', { name: 'Enable dynamic code' })).not.toBeInTheDocument();
+    });
+  });
 });

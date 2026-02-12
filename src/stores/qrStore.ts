@@ -50,6 +50,11 @@ interface QrState {
   // Validation
   validationState: ValidationState;
 
+  // Dynamic code
+  isDynamic: boolean;
+  dynamicShortCode: string | null;
+  dynamicLabel: string;
+
   // Actions
   setContent: (content: string) => void;
   setInputType: (type: QrType) => void;
@@ -71,6 +76,9 @@ interface QrState {
   setExportSize: (size: number) => void;
   setValidationState: (state: ValidationState) => void;
   resetValidation: () => void;
+  setIsDynamic: (value: boolean) => void;
+  setDynamicShortCode: (code: string | null) => void;
+  setDynamicLabel: (label: string) => void;
   getStyle: () => QrStyle;
   reset: () => void;
 }
@@ -151,10 +159,15 @@ export const useQrStore = create<QrState>((set, get) => ({
   // Validation
   validationState: 'idle',
 
-  // Actions
-  setContent: (content) => set({ content, validationState: 'idle' }),
+  // Dynamic code
+  isDynamic: false,
+  dynamicShortCode: null,
+  dynamicLabel: '',
 
-  setInputType: (inputType) => set({ inputType, content: '', validationState: 'idle' }),
+  // Actions
+  setContent: (content) => set({ content, validationState: 'idle', dynamicShortCode: null }),
+
+  setInputType: (inputType) => set({ inputType, content: '', validationState: 'idle', isDynamic: false, dynamicShortCode: null, dynamicLabel: '' }),
 
   setWifiConfig: (config) => set((state) => ({
     wifiConfig: { ...state.wifiConfig, ...config },
@@ -210,6 +223,12 @@ export const useQrStore = create<QrState>((set, get) => ({
 
   resetValidation: () => set({ validationState: 'idle' }),
 
+  setIsDynamic: (isDynamic) => set({ isDynamic, dynamicShortCode: isDynamic ? get().dynamicShortCode : null }),
+
+  setDynamicShortCode: (dynamicShortCode) => set({ dynamicShortCode }),
+
+  setDynamicLabel: (dynamicLabel) => set({ dynamicLabel }),
+
   getStyle: () => {
     const state = get();
     return {
@@ -244,5 +263,8 @@ export const useQrStore = create<QrState>((set, get) => ({
     errorCorrection: 'M',
     exportSize: 1024,
     validationState: 'idle',
+    isDynamic: false,
+    dynamicShortCode: null,
+    dynamicLabel: '',
   }),
 }));
