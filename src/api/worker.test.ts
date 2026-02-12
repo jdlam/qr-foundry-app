@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { workerApi, WorkerApiError } from './worker';
+import { handleSessionExpired } from './session';
+
+vi.mock('./session', () => ({
+  handleSessionExpired: vi.fn(),
+  resetSessionExpiredFlag: vi.fn(),
+  isSessionExpired: vi.fn(),
+}));
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
@@ -13,6 +20,7 @@ function jsonResponse(body: object, status = 200) {
 
 beforeEach(() => {
   mockFetch.mockReset();
+  vi.mocked(handleSessionExpired).mockReset();
 });
 
 describe('workerApi', () => {
@@ -238,6 +246,22 @@ describe('workerApi', () => {
         message: 'Unauthorized',
         status: 401,
       });
+    });
+  });
+
+  describe('session expiry interceptor', () => {
+    it('calls handleSessionExpired on 401 for authenticated requests', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ success: false, error: 'Token expired' }, 401));
+
+      await expect(workerApi.listCodes('tok')).rejects.toBeInstanceOf(WorkerApiError);
+      expect(handleSessionExpired).toHaveBeenCalledOnce();
+    });
+
+    it('does NOT call handleSessionExpired on non-401 errors', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ success: false, error: 'Quota exceeded' }, 403));
+
+      await expect(workerApi.createCode('tok', { destinationUrl: 'https://a.com' })).rejects.toBeInstanceOf(WorkerApiError);
+      expect(handleSessionExpired).not.toHaveBeenCalled();
     });
   });
 });

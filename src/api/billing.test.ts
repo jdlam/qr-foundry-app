@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { billingApi, ApiError } from './billing';
+import { handleSessionExpired } from './session';
+
+vi.mock('./session', () => ({
+  handleSessionExpired: vi.fn(),
+  resetSessionExpiredFlag: vi.fn(),
+  isSessionExpired: vi.fn(),
+}));
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
@@ -13,6 +20,7 @@ function jsonResponse(body: object, status = 200) {
 
 beforeEach(() => {
   mockFetch.mockReset();
+  vi.mocked(handleSessionExpired).mockReset();
 });
 
 describe('billingApi', () => {
@@ -126,6 +134,43 @@ describe('billingApi', () => {
         message: 'Request failed with status 500',
         status: 500,
       });
+    });
+  });
+
+  describe('session expiry interceptor', () => {
+    it('calls handleSessionExpired on 401 for authenticated requests', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ success: false, error: 'Token expired' }, 401));
+
+      await expect(billingApi.me('tok')).rejects.toBeInstanceOf(ApiError);
+      expect(handleSessionExpired).toHaveBeenCalledOnce();
+    });
+
+    it('calls handleSessionExpired on 401 for refresh', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ success: false, error: 'Token expired' }, 401));
+
+      await expect(billingApi.refresh('tok')).rejects.toBeInstanceOf(ApiError);
+      expect(handleSessionExpired).toHaveBeenCalledOnce();
+    });
+
+    it('does NOT call handleSessionExpired on 401 for login (unauthenticated)', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ success: false, error: 'Invalid credentials' }, 401));
+
+      await expect(billingApi.login('a@b.com', 'wrong')).rejects.toBeInstanceOf(ApiError);
+      expect(handleSessionExpired).not.toHaveBeenCalled();
+    });
+
+    it('does NOT call handleSessionExpired on 401 for signup (unauthenticated)', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ success: false, error: 'Error' }, 401));
+
+      await expect(billingApi.signup('a@b.com', 'pass')).rejects.toBeInstanceOf(ApiError);
+      expect(handleSessionExpired).not.toHaveBeenCalled();
+    });
+
+    it('does NOT call handleSessionExpired on non-401 errors', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ success: false, error: 'Server error' }, 500));
+
+      await expect(billingApi.me('tok')).rejects.toBeInstanceOf(ApiError);
+      expect(handleSessionExpired).not.toHaveBeenCalled();
     });
   });
 });

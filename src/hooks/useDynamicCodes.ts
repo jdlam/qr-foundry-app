@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useDynamicCodesStore } from '../stores/dynamicCodesStore';
 import { useAuthStore } from '../stores/authStore';
 import { workerApi, WorkerApiError } from '../api/worker';
+import { isSessionExpired } from '../api/session';
 import type { CreateCodeRequest, UpdateCodeRequest, CodeStatus, DynamicQRRecord } from '../api/types';
 
 function getToken(): string | null {
@@ -28,8 +29,10 @@ export function useDynamicCodes() {
       const codes = await workerApi.listCodes(token, status ?? undefined);
       useDynamicCodesStore.getState().setCodes(codes);
     } catch (err) {
-      const message = err instanceof WorkerApiError ? err.message : 'Failed to load codes';
-      toast.error(message);
+      if (!isSessionExpired(err)) {
+        const message = err instanceof WorkerApiError ? err.message : 'Failed to load codes';
+        toast.error(message);
+      }
     } finally {
       useDynamicCodesStore.setState({ isLoadingCodes: false });
     }
@@ -43,8 +46,10 @@ export function useDynamicCodes() {
       const usage = await workerApi.getUsage(token);
       useDynamicCodesStore.getState().setUsage(usage);
     } catch (err) {
-      const message = err instanceof WorkerApiError ? err.message : 'Failed to load usage';
-      toast.error(message);
+      if (!isSessionExpired(err)) {
+        const message = err instanceof WorkerApiError ? err.message : 'Failed to load usage';
+        toast.error(message);
+      }
     }
   }, []);
 
@@ -61,8 +66,10 @@ export function useDynamicCodes() {
       toast.success(`Created: qrfo.link/${code.shortCode}`);
       createdCode = code;
     } catch (err) {
-      const message = err instanceof WorkerApiError ? err.message : 'Failed to create code';
-      toast.error(message);
+      if (!isSessionExpired(err)) {
+        const message = err instanceof WorkerApiError ? err.message : 'Failed to create code';
+        toast.error(message);
+      }
     } finally {
       useDynamicCodesStore.setState({ isCreating: false });
     }
@@ -84,8 +91,10 @@ export function useDynamicCodes() {
       toast.success('Code updated');
       success = true;
     } catch (err) {
-      const message = err instanceof WorkerApiError ? err.message : 'Failed to update code';
-      toast.error(message);
+      if (!isSessionExpired(err)) {
+        const message = err instanceof WorkerApiError ? err.message : 'Failed to update code';
+        toast.error(message);
+      }
     } finally {
       useDynamicCodesStore.setState({ isUpdating: false });
     }
@@ -107,8 +116,10 @@ export function useDynamicCodes() {
       toast.success('Code deleted');
       deleted = true;
     } catch (err) {
-      const message = err instanceof WorkerApiError ? err.message : 'Failed to delete code';
-      toast.error(message);
+      if (!isSessionExpired(err)) {
+        const message = err instanceof WorkerApiError ? err.message : 'Failed to delete code';
+        toast.error(message);
+      }
     } finally {
       useDynamicCodesStore.setState({ isDeleting: false });
     }

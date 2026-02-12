@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { authAdapter } from '@platform';
-import { billingApi, ApiError } from '../api/billing';
+import { billingApi } from '../api/billing';
+import { registerSessionExpiredHandler, resetSessionExpiredFlag } from '../api/session';
 import type { AuthUser, UserPlan, JwtClaims } from '../api/types';
 
 interface AuthState {
@@ -89,6 +90,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const { token, user } = await billingApi.login(email, password);
       await authAdapter.setToken(token);
+      resetSessionExpiredFlag();
       const plan = await billingApi.plan(token);
       set({ user, plan, token, isAuthenticating: false });
       scheduleRefresh(token, () => get().refreshToken());
@@ -103,6 +105,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const { token, user } = await billingApi.signup(email, password);
       await authAdapter.setToken(token);
+      resetSessionExpiredFlag();
       const plan = await billingApi.plan(token);
       set({ user, plan, token, isAuthenticating: false });
       scheduleRefresh(token, () => get().refreshToken());
@@ -127,10 +130,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await authAdapter.setToken(newToken);
       set({ token: newToken });
       scheduleRefresh(newToken, () => get().refreshToken());
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 401) {
-        await get().logout();
-      }
+    } catch {
+      // 401 is handled by the session expired interceptor in api/session.ts
     }
   },
 
@@ -146,3 +147,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return get().token !== null;
   },
 }));
+
+// Register session expired handler — called by API clients on 401
+registerSessionExpiredHandler(() => {
+  void useAuthStore.getState().logout().catch(() => {});
+});

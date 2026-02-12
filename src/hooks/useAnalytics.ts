@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore } from '../stores/authStore';
 import { workerApi, WorkerApiError } from '../api/worker';
+import { isSessionExpired } from '../api/session';
 import type { ScanAnalyticsResponse, ScanAnalyticsSummary, Granularity } from '../api/types';
 
 function formatLocalDate(date: Date): string {
@@ -41,8 +42,10 @@ export function useAnalytics() {
       });
       setCodeAnalytics(data);
     } catch (err) {
-      const message = err instanceof WorkerApiError ? err.message : 'Failed to load analytics';
-      toast.error(message);
+      if (!isSessionExpired(err)) {
+        const message = err instanceof WorkerApiError ? err.message : 'Failed to load analytics';
+        toast.error(message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -61,8 +64,10 @@ export function useAnalytics() {
       });
       setOverview(data);
     } catch (err) {
-      const message = err instanceof WorkerApiError ? err.message : 'Failed to load analytics';
-      toast.error(message);
+      if (!isSessionExpired(err)) {
+        const message = err instanceof WorkerApiError ? err.message : 'Failed to load analytics';
+        toast.error(message);
+      }
     } finally {
       setIsLoading(false);
     }

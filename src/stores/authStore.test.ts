@@ -169,15 +169,16 @@ describe('authStore', () => {
       expect(useAuthStore.getState().token).toBe(newToken);
     });
 
-    it('calls logout on 401', async () => {
+    it('silently catches errors (401 handled by session interceptor)', async () => {
       useAuthStore.setState({ token: validToken, user: mockUser, plan: mockPlan });
       mockedBilling.refresh.mockRejectedValue(new ApiError('Unauthorized', 401));
 
+      // Should not throw — errors are caught silently
       await useAuthStore.getState().refreshToken();
 
-      expect(mockedAuth.clearToken).toHaveBeenCalled();
-      expect(useAuthStore.getState().user).toBeNull();
-      expect(useAuthStore.getState().token).toBeNull();
+      // refreshToken no longer calls logout directly — the session expired
+      // interceptor in api/session.ts handles 401s at the API client level
+      expect(useAuthStore.getState().token).toBe(validToken);
     });
 
     it('does nothing when no token', async () => {

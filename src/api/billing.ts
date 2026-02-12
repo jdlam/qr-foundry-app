@@ -1,4 +1,5 @@
 import type { ApiResponse, AuthResponse, AuthUser, UserPlan } from './types';
+import { handleSessionExpired } from './session';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.qr-foundry.com';
 
@@ -24,7 +25,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const body: ApiResponse<T> = await res.json();
 
   if (!res.ok || !body.success) {
-    throw new ApiError(body.error || `Request failed with status ${res.status}`, res.status);
+    const error = new ApiError(body.error || `Request failed with status ${res.status}`, res.status);
+    if (res.status === 401) {
+      const headers = new Headers(options.headers ?? undefined);
+      if (headers.has('Authorization')) {
+        handleSessionExpired();
+      }
+    }
+    throw error;
   }
 
   return body.data as T;

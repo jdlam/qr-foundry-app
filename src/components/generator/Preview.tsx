@@ -8,6 +8,7 @@ import { useQrStore } from '../../stores/qrStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useAuthModalStore } from '../../stores/authModalStore';
 import { workerApi, WorkerApiError } from '../../api/worker';
+import { isSessionExpired } from '../../api/session';
 import { ValidationBadge } from './ValidationBadge';
 
 // Checkerboard pattern for showing transparency
@@ -57,8 +58,10 @@ export function Preview() {
       toast.success(`Dynamic code created: qrfo.link/${record.shortCode}`);
       return `https://qrfo.link/${record.shortCode}`;
     } catch (err) {
-      const message = err instanceof WorkerApiError ? err.message : 'Failed to create dynamic code';
-      toast.error(message);
+      if (!isSessionExpired(err)) {
+        const message = err instanceof WorkerApiError ? err.message : 'Failed to create dynamic code';
+        toast.error(message);
+      }
       return null;
     } finally {
       setIsCreatingDynamic(false);

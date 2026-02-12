@@ -9,6 +9,7 @@ import type {
   ScanAnalyticsResponse,
   ScanAnalyticsSummary,
 } from './types';
+import { handleSessionExpired } from './session';
 
 const WORKER_BASE = import.meta.env.VITE_WORKER_URL || 'https://qrfo.link';
 
@@ -34,7 +35,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const body: ApiResponse<T> = await res.json();
 
   if (!res.ok || !body.success) {
-    throw new WorkerApiError(body.error || `Request failed with status ${res.status}`, res.status);
+    const error = new WorkerApiError(body.error || `Request failed with status ${res.status}`, res.status);
+    if (res.status === 401) {
+      const headers = new Headers(options.headers ?? undefined);
+      if (headers.has('Authorization')) {
+        handleSessionExpired();
+      }
+    }
+    throw error;
   }
 
   return body.data as T;
