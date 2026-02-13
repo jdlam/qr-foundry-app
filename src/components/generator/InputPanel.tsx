@@ -432,10 +432,13 @@ export function InputPanel() {
         <div>
           <div className="flex items-center justify-between">
             <div
-              className="font-mono text-[11px] font-semibold uppercase tracking-[0.06em]"
+              className="flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.06em]"
               style={{ color: 'var(--text-muted)' }}
             >
               Dynamic Code
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
+                <path d="M13 2L4.5 13H11L10 22L19.5 11H13L13 2Z" />
+              </svg>
             </div>
             <button
               onClick={handleDynamicToggle}
