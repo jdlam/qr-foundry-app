@@ -14,6 +14,7 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   badge?: 'soon';
+  premium?: boolean;
 }
 
 function formatTierLabel(tier: string): string {
@@ -30,7 +31,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'generator',
     label: 'Generator',
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="7" />
         <rect x="14" y="3" width="7" height="7" />
         <rect x="3" y="14" width="7" height="7" />
@@ -44,7 +45,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'batch',
     label: 'Batch',
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="1" />
         <line x1="3" y1="9" x2="21" y2="9" />
         <line x1="3" y1="15" x2="21" y2="15" />
@@ -56,7 +57,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'scanner',
     label: 'Scanner',
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 7V5a2 2 0 0 1 2-2h2" />
         <path d="M17 3h2a2 2 0 0 1 2 2v2" />
         <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
@@ -69,7 +70,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'history',
     label: 'History',
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
       </svg>
@@ -79,7 +80,7 @@ const NAV_ITEMS: NavItem[] = [
     id: 'templates',
     label: 'Templates',
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="1" />
         <line x1="3" y1="9" x2="21" y2="9" />
         <line x1="9" y1="21" x2="9" y2="9" />
@@ -90,11 +91,12 @@ const NAV_ITEMS: NavItem[] = [
     id: 'dynamic',
     label: 'Dynamic Codes',
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
       </svg>
     ),
+    premium: true,
   },
 ];
 
@@ -144,6 +146,11 @@ function NavButton({
       {!collapsed && (
         <>
           <span className="flex-1">{item.label}</span>
+          {item.premium && (
+            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
+              <path d="M13 2L4.5 13H11L10 22L19.5 11H13L13 2Z" />
+            </svg>
+          )}
           {item.badge && (
             <span
               className="font-mono text-[9px] font-bold uppercase tracking-wide px-[5px] py-px rounded-sm leading-snug"
