@@ -214,7 +214,7 @@ function DevPersonaSwitcher() {
           onMouseLeave={(e) => {
             if (!switching) {
               e.currentTarget.style.background = 'var(--panel-bg)';
-              e.currentTarget.style.color = switching === b.label ? 'var(--accent)' : 'var(--text-faint)';
+              e.currentTarget.style.color = 'var(--text-faint)';
             }
           }}
         >
