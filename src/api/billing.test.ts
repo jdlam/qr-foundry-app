@@ -126,6 +126,35 @@ describe('billingApi', () => {
     });
   });
 
+  describe('impersonate', () => {
+    it('posts tier and addonCount and returns impersonation payload', async () => {
+      const data = {
+        token: 'imp-token',
+        user: { id: 'imp-1', email: 'free@test.qr-foundry.com', createdAt: '2025-01-01' },
+        plan: { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 },
+      };
+      mockFetch.mockResolvedValue(jsonResponse({ success: true, data }));
+
+      const result = await billingApi.impersonate('subscription', 1);
+
+      expect(result).toEqual(data);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/dev/impersonate'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ tier: 'subscription', addonCount: 1 }),
+        }),
+      );
+    });
+
+    it('does NOT call session expired handler on 401 (no auth header)', async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ success: false, error: 'Unauthorized' }, 401));
+
+      await expect(billingApi.impersonate('free')).rejects.toBeInstanceOf(ApiError);
+      expect(handleSessionExpired).not.toHaveBeenCalled();
+    });
+  });
+
   describe('error handling', () => {
     it('uses status text when no error message in body', async () => {
       mockFetch.mockResolvedValue(jsonResponse({ success: false }, 500));

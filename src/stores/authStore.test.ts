@@ -25,6 +25,7 @@ vi.mock('../api/billing', () => ({
     refresh: vi.fn(),
     me: vi.fn(),
     plan: vi.fn(),
+    impersonate: vi.fn(),
   },
   ApiError: class ApiError extends Error {
     status: number;
@@ -187,6 +188,26 @@ describe('authStore', () => {
       await useAuthStore.getState().refreshToken();
 
       expect(mockedBilling.refresh).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('impersonate', () => {
+    it('stores impersonation token and updates user/plan', async () => {
+      const impersonatedUser = { id: 'imp-1', email: 'sub@test.qr-foundry.com', createdAt: '2025-01-01' };
+      const impersonatedPlan = { tier: 'subscription' as const, features: ['dynamic_codes'], maxCodes: 25 };
+      mockedBilling.impersonate.mockResolvedValue({
+        token: validToken,
+        user: impersonatedUser,
+        plan: impersonatedPlan,
+      });
+
+      await useAuthStore.getState().impersonate('subscription', 0);
+
+      expect(mockedBilling.impersonate).toHaveBeenCalledWith('subscription', 0);
+      expect(mockedAuth.setToken).toHaveBeenCalledWith(validToken);
+      expect(useAuthStore.getState().token).toBe(validToken);
+      expect(useAuthStore.getState().user).toEqual(impersonatedUser);
+      expect(useAuthStore.getState().plan).toEqual(impersonatedPlan);
     });
   });
 
