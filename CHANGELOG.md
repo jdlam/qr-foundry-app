@@ -7,79 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-02-13
+
+Initial release of the QR Foundry desktop and web app.
+
 ### Added
 
-- Toast notifications for user feedback across all operations (export, copy, history, templates, scanner)
-- Batch preview gallery with keyboard navigation (arrow keys) and thumbnail selection
-- Batch validation pipeline that verifies generated QR codes are scannable
-- Export format selector (PNG/SVG) for batch generation with automatic regeneration on format change
-- Individual QR code download from batch preview
-- Batch tab state persistence - state survives tab switches
-- Drag-and-drop logo upload with automatic optimization:
-  - Auto-trim transparent borders
-  - Auto-resize to 512px max dimension
-  - Auto-compress under 500KB
-  - Scales logo to 90% of content area
+- Add auto-updater and release pipeline (#32)
+- Session expiry 401 interceptor (#31)
+- "Make Dynamic" toggle in generator (#30)
+- Scan analytics views for dynamic codes (#29)
+- Dynamic codes management view with CRUD (#28)
+- Worker API client + types for dynamic codes (#27)
+- Add functional feature gating for pro features (#25)
+- Add per-environment .env files for API URL targeting (#23)
+- Color picker popover, foreground/background controls, collapsible sidebar, compact type selector (#21)
+- Add auth integration with API client, token storage, and login UI (#19)
+- App redesign with sidebar nav, theming, new icons, and updated styles (#17)
+- Add platform abstraction layer for web + desktop builds (#15)
+- Add toast notifications for user feedback (#11)
+- Persist batch tab state and improve validation (#10)
+- Improve batch view with preview gallery and export options (#9)
+- Add drag-and-drop logo upload with auto-optimization (#6)
+- Add unit tests and rename app to QR Foundry (#2)
 
 ### Fixed
 
-- Transparent background PNG export now correctly renders with alpha channel
-- Batch preview now shows QR codes immediately when selecting items
-- Logo upload no longer rejects large files - auto-resizes instead
-
-### Technical
-
-- Initial app implementation with Tauri + React + TypeScript
-- QR code generation for multiple input types:
-  - URL, Plain Text, WiFi, vCard, Email, SMS, Phone, Geo
-- Live preview with real-time updates
-- Style customization:
-  - Dot styles (square, rounded, dots, classy, classy-rounded, extra-rounded)
-  - Corner square styles
-  - Corner dot styles
-  - Foreground/background colors
-  - Gradient fills
-  - Logo embedding
-  - Transparent backgrounds
-- Error correction level selection (L, M, Q, H)
-- Export options:
-  - PNG export (512-4096px)
-  - SVG export
-  - Clipboard copy
-- QR validation (scan and verify content matches)
-- QR scanner (decode from image or clipboard)
-- History (SQLite-backed, searchable)
-- Templates (save and load style presets)
-- Batch generation from CSV
-- Custom app icons and branding
-- PR template for contributions
-- Release management documentation
-
-### Stack
-
-- Tauri 2.x backend with Rust
-- React 19 frontend
-- Zustand for state management
-- Tailwind CSS v4 for styling
-- SQLite for local storage
-- Sharp for icon generation
-
----
-
-## Release History
-
-<!--
-## [1.0.0] - YYYY-MM-DD
-
-### Added
-- Feature descriptions
+- Scale down macOS dock icon to match system icon sizing (#20)
+- Transparent background PNG export and preview visibility (#7)
 
 ### Changed
-- Changes to existing features
 
-### Fixed
-- Bug fixes
+- Remove Pro tier gating — all QR features are now free (#26)
+- Use strip_data_url_prefix helper instead of inline logic (#5)
 
-### Removed
-- Removed features
--->
+[0.1.0]: https://github.com/jdlam/qr-foundry-app/releases/tag/v0.1.0
