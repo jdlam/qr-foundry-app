@@ -22,6 +22,17 @@ vi.mock('@tauri-apps/plugin-process', () => ({
 import { isTauri } from '../lib/platform';
 import { useUpdateCheck } from './useUpdateCheck';
 
+/**
+ * Flush pending microtasks from dynamic imports and async effects.
+ * The hook chains `await import(...)` → `await check()` → setState,
+ * which requires multiple microtask ticks to fully settle.
+ */
+async function flushAsync(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
 describe('useUpdateCheck', () => {
   beforeEach(() => {
     vi.mocked(isTauri).mockReturnValue(true);
@@ -32,14 +43,14 @@ describe('useUpdateCheck', () => {
 
   afterEach(async () => {
     cleanup();
-    await act(async () => {});
+    await flushAsync();
   });
 
   it('initializes with no update and not installing', async () => {
     mockCheck.mockResolvedValue(null);
     const { result } = renderHook(() => useUpdateCheck());
 
-    await act(async () => {});
+    await flushAsync();
 
     expect(result.current.updateAvailable).toBe(false);
     expect(result.current.installing).toBe(false);
@@ -49,7 +60,8 @@ describe('useUpdateCheck', () => {
     vi.mocked(isTauri).mockReturnValue(false);
     const { result } = renderHook(() => useUpdateCheck());
 
-    await act(async () => {});
+    // Allow time for the effect to (not) run
+    await flushAsync();
 
     expect(mockCheck).not.toHaveBeenCalled();
     expect(result.current.updateAvailable).toBe(false);
@@ -60,16 +72,16 @@ describe('useUpdateCheck', () => {
 
     const { result } = renderHook(() => useUpdateCheck());
 
-    await act(async () => {});
-
-    expect(result.current.updateAvailable).toBe(true);
+    await waitFor(() => {
+      expect(result.current.updateAvailable).toBe(true);
+    });
   });
 
   it('does not set updateAvailable when no update exists', async () => {
     mockCheck.mockResolvedValue(null);
     const { result } = renderHook(() => useUpdateCheck());
 
-    await act(async () => {});
+    await flushAsync();
 
     expect(result.current.updateAvailable).toBe(false);
   });
@@ -78,7 +90,7 @@ describe('useUpdateCheck', () => {
     mockCheck.mockRejectedValue(new Error('offline'));
     const { result } = renderHook(() => useUpdateCheck());
 
-    await act(async () => {});
+    await flushAsync();
 
     expect(result.current.updateAvailable).toBe(false);
   });
@@ -104,8 +116,9 @@ describe('useUpdateCheck', () => {
 
     const { result } = renderHook(() => useUpdateCheck());
 
-    await act(async () => {});
-    expect(result.current.updateAvailable).toBe(true);
+    await waitFor(() => {
+      expect(result.current.updateAvailable).toBe(true);
+    });
 
     act(() => {
       result.current.install();
@@ -125,8 +138,9 @@ describe('useUpdateCheck', () => {
 
     const { result } = renderHook(() => useUpdateCheck());
 
-    await act(async () => {});
-    expect(result.current.updateAvailable).toBe(true);
+    await waitFor(() => {
+      expect(result.current.updateAvailable).toBe(true);
+    });
 
     act(() => {
       result.current.install();
@@ -142,8 +156,9 @@ describe('useUpdateCheck', () => {
 
     const { result } = renderHook(() => useUpdateCheck());
 
-    await act(async () => {});
-    expect(result.current.updateAvailable).toBe(true);
+    await waitFor(() => {
+      expect(result.current.updateAvailable).toBe(true);
+    });
 
     await act(async () => {
       result.current.install();
@@ -156,7 +171,7 @@ describe('useUpdateCheck', () => {
     mockCheck.mockResolvedValue(null);
     const { result } = renderHook(() => useUpdateCheck());
 
-    await act(async () => {});
+    await flushAsync();
 
     await act(async () => {
       result.current.install();
@@ -170,8 +185,9 @@ describe('useUpdateCheck', () => {
     mockCheck.mockResolvedValue({ downloadAndInstall: mockDownloadAndInstall });
     const { result } = renderHook(() => useUpdateCheck());
 
-    await act(async () => {});
-    expect(result.current.updateAvailable).toBe(true);
+    await waitFor(() => {
+      expect(result.current.updateAvailable).toBe(true);
+    });
 
     act(() => {
       result.current.dismiss();

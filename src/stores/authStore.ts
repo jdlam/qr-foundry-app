@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { authAdapter } from '@platform';
 import { billingApi } from '../api/billing';
 import { registerSessionExpiredHandler, resetSessionExpiredFlag } from '../api/session';
-import type { AuthUser, UserPlan, JwtClaims } from '../api/types';
+import type { AuthUser, UserPlan, JwtClaims, PlanTier } from '../api/types';
 
 interface AuthState {
   user: AuthUser | null;
@@ -16,6 +16,7 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   fetchPlan: () => Promise<void>;
+  impersonate: (tier: PlanTier, addonCount?: number) => Promise<void>;
   isLoggedIn: () => boolean;
 }
 
@@ -141,6 +142,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     const plan = await billingApi.plan(token);
     set({ plan });
+  },
+
+  async impersonate(tier: PlanTier, addonCount = 0) {
+    const { token, user, plan } = await billingApi.impersonate(tier, addonCount);
+    await authAdapter.setToken(token);
+    resetSessionExpiredFlag();
+    set({ user, plan, token });
+    scheduleRefresh(token, () => get().refreshToken());
   },
 
   isLoggedIn() {

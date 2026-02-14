@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useAuthModalStore } from '../../stores/authModalStore';
+import { useAuthStore } from '../../stores/authStore';
+import type { PlanTier } from '../../api/types';
 
 type TabId = 'generator' | 'batch' | 'scanner' | 'history' | 'templates' | 'dynamic';
 
@@ -168,6 +170,61 @@ function NavButton({
   );
 }
 
+function DevPersonaSwitcher() {
+  const [switching, setSwitching] = useState<string | null>(null);
+
+  const handleSwitch = async (tier: PlanTier, addonCount = 0, label: string) => {
+    setSwitching(label);
+    try {
+      await useAuthStore.getState().impersonate(tier, addonCount);
+    } catch {
+      // Silently ignore — dev tool
+    } finally {
+      setSwitching(null);
+    }
+  };
+
+  const buttons: { label: string; tier: PlanTier; addonCount: number }[] = [
+    { label: 'Free', tier: 'free', addonCount: 0 },
+    { label: 'Sub', tier: 'subscription', addonCount: 0 },
+    { label: 'Sub+Add', tier: 'subscription', addonCount: 1 },
+  ];
+
+  return (
+    <div className="flex gap-1 px-2">
+      {buttons.map((b) => (
+        <button
+          key={b.label}
+          onClick={() => handleSwitch(b.tier, b.addonCount, b.label)}
+          disabled={switching !== null}
+          className="flex-1 text-[9px] font-mono font-bold uppercase tracking-wide py-0.5 rounded-sm transition-colors"
+          style={{
+            background: 'var(--panel-bg)',
+            border: '1px solid var(--border)',
+            color: switching === b.label ? 'var(--accent)' : 'var(--text-faint)',
+            opacity: switching !== null && switching !== b.label ? 0.5 : 1,
+            cursor: switching !== null ? 'wait' : 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            if (!switching) {
+              e.currentTarget.style.background = 'var(--hover-bg)';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!switching) {
+              e.currentTarget.style.background = 'var(--panel-bg)';
+              e.currentTarget.style.color = switching === b.label ? 'var(--accent)' : 'var(--text-faint)';
+            }
+          }}
+        >
+          {switching === b.label ? '...' : b.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const { user, plan, isLoggedIn, logout } = useAuth();
@@ -317,6 +374,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             >
               Sign Out
             </button>
+            {import.meta.env.DEV && <DevPersonaSwitcher />}
           </div>
         ) : (
           <div className="flex items-center gap-2.5 p-2 rounded-sm">

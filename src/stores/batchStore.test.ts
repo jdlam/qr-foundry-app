@@ -3,8 +3,9 @@ import { useBatchStore, type BatchItem, type BatchItemWithStatus, type BatchVali
 
 describe('batchStore', () => {
   beforeEach(() => {
-    // Reset store before each test
+    // Reset store before each test (clear() intentionally preserves exportFormat)
     useBatchStore.getState().clear();
+    useBatchStore.getState().setExportFormat('png');
   });
 
   describe('initial state', () => {
