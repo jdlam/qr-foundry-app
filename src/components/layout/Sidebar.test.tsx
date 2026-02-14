@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Sidebar } from './Sidebar';
 import type { TabId } from './Sidebar';
 import { useAuthModalStore } from '../../stores/authModalStore';
 
 // Mock useAuth hook
 const mockLogout = vi.fn();
+const mockImpersonate = vi.fn();
 let mockAuthState: Record<string, unknown> = {
   user: null,
   plan: null,
@@ -19,6 +20,12 @@ let mockAuthState: Record<string, unknown> = {
 
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => mockAuthState,
+}));
+
+vi.mock('../../stores/authStore', () => ({
+  useAuthStore: {
+    getState: () => ({ impersonate: mockImpersonate }),
+  },
 }));
 
 describe('Sidebar', () => {
@@ -39,6 +46,8 @@ describe('Sidebar', () => {
       logout: mockLogout,
     };
     mockLogout.mockReset();
+    mockImpersonate.mockReset();
+    mockImpersonate.mockResolvedValue(undefined);
     useAuthModalStore.getState().close();
   });
 
@@ -117,6 +126,25 @@ describe('Sidebar', () => {
       fireEvent.click(screen.getByTitle('Sign In'));
 
       expect(useAuthModalStore.getState().isOpen).toBe(true);
+    });
+
+    it('shows dev persona switcher when logged out', () => {
+      render(<Sidebar {...defaultProps} />);
+
+      expect(screen.getByRole('button', { name: 'Free' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sub' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sub+Add' })).toBeInTheDocument();
+    });
+
+    it('calls impersonate from logged-out persona switcher', async () => {
+      render(<Sidebar {...defaultProps} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Sub+Add' }));
+
+      expect(mockImpersonate).toHaveBeenCalledWith('subscription', 1);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Sub+Add' })).toBeEnabled();
+      });
     });
   });
 

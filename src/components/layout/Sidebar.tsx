@@ -377,54 +377,57 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             {import.meta.env.DEV && <DevPersonaSwitcher />}
           </div>
         ) : (
-          <div className="flex items-center gap-2.5 p-2 rounded-sm">
-            <div
-              className="flex items-center gap-2.5 flex-1 cursor-pointer rounded-sm transition-colors p-0"
-              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = ''; }}
-              onClick={openAuthModal}
-            >
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2.5 p-2 rounded-sm">
               <div
-                className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0"
-                style={{
-                  background: 'var(--panel-bg)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-faint)',
-                }}
+                className="flex items-center gap-2.5 flex-1 cursor-pointer rounded-sm transition-colors p-0"
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = ''; }}
+                onClick={openAuthModal}
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
+                <div
+                  className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0"
+                  style={{
+                    background: 'var(--panel-bg)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-faint)',
+                  }}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <div className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    Sign In
+                  </div>
+                  <div className="text-[11px] font-mono" style={{ color: 'var(--text-faint)' }}>
+                    Free tier
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setCollapsed(true)}
+                className="w-6 h-6 flex items-center justify-center rounded-sm shrink-0 transition-colors"
+                style={{ color: 'var(--text-faint)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--hover-bg)';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-faint)';
+                }}
+                title="Collapse sidebar"
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="11 17 6 12 11 7" />
+                  <polyline points="18 17 13 12 18 7" />
                 </svg>
-              </div>
-              <div className="flex-1">
-                <div className="text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-                  Sign In
-                </div>
-                <div className="text-[11px] font-mono" style={{ color: 'var(--text-faint)' }}>
-                  Free tier
-                </div>
-              </div>
+              </button>
             </div>
-            <button
-              onClick={() => setCollapsed(true)}
-              className="w-6 h-6 flex items-center justify-center rounded-sm shrink-0 transition-colors"
-              style={{ color: 'var(--text-faint)' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--hover-bg)';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'var(--text-faint)';
-              }}
-              title="Collapse sidebar"
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="11 17 6 12 11 7" />
-                <polyline points="18 17 13 12 18 7" />
-              </svg>
-            </button>
+            {import.meta.env.DEV && <DevPersonaSwitcher />}
           </div>
         )}
       </div>
