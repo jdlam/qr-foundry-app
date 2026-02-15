@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-14
+
 ### Added
 
+- Web deploy pipeline: Cloudflare Workers deployment at `app.qr-foundry.com` with 3-environment pattern (dev/preview/production)
+- `wrangler.toml` with SPA routing (`not_found_handling = "single-page-application"`) for client-side navigation
+- `deploy-web.yml` GitHub Actions workflow: PR → dev, merge → preview, release → production
 - Dev persona switcher in sidebar (Free | Sub | Sub+Add) for both logged-in and logged-out development sessions
 - API-backed impersonation flow in auth state (`billingApi.impersonate()` + `useAuthStore().impersonate()`)
 - Regression coverage for persona switching while logged out and logged in, plus failure-path toast handling
@@ -57,5 +62,6 @@ Initial release of the QR Foundry desktop and web app.
 - Remove Pro tier gating — all QR features are now free (#26)
 - Use strip_data_url_prefix helper instead of inline logic (#5)
 
+[0.2.0]: https://github.com/jdlam/qr-foundry-app/releases/tag/v0.2.0
 [0.1.0]: https://github.com/jdlam/qr-foundry-app/releases/tag/v0.1.0
-[Unreleased]: https://github.com/jdlam/qr-foundry-app/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/jdlam/qr-foundry-app/compare/v0.2.0...HEAD
