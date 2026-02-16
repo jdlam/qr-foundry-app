@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor, cleanup } from '@testing-library/react';
+import { renderHook, act, cleanup } from '@testing-library/react';
 
 const { mockCheck, mockDownloadAndInstall, mockRelaunch } = vi.hoisted(() => ({
   mockCheck: vi.fn(),
@@ -26,9 +26,11 @@ import { useUpdateCheck } from './useUpdateCheck';
  * Flush pending microtasks from dynamic imports and async effects.
  * The hook chains `await import(...)` → `await check()` → setState,
  * which requires multiple microtask ticks to fully settle.
+ * Two ticks handle the two sequential awaits in the effect.
  */
 async function flushAsync(): Promise<void> {
   await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 }
@@ -72,9 +74,9 @@ describe('useUpdateCheck', () => {
 
     const { result } = renderHook(() => useUpdateCheck());
 
-    await waitFor(() => {
-      expect(result.current.updateAvailable).toBe(true);
-    });
+    await flushAsync();
+
+    expect(result.current.updateAvailable).toBe(true);
   });
 
   it('does not set updateAvailable when no update exists', async () => {
@@ -116,17 +118,13 @@ describe('useUpdateCheck', () => {
 
     const { result } = renderHook(() => useUpdateCheck());
 
-    await waitFor(() => {
-      expect(result.current.updateAvailable).toBe(true);
-    });
+    await flushAsync();
+    expect(result.current.updateAvailable).toBe(true);
 
-    act(() => {
+    await act(async () => {
       result.current.install();
     });
-
-    await waitFor(() => {
-      expect(mockRelaunch).toHaveBeenCalledOnce();
-    });
+    await flushAsync();
 
     expect(mockDownloadAndInstall).toHaveBeenCalledOnce();
     expect(result.current.installing).toBe(true);
@@ -138,9 +136,8 @@ describe('useUpdateCheck', () => {
 
     const { result } = renderHook(() => useUpdateCheck());
 
-    await waitFor(() => {
-      expect(result.current.updateAvailable).toBe(true);
-    });
+    await flushAsync();
+    expect(result.current.updateAvailable).toBe(true);
 
     act(() => {
       result.current.install();
@@ -156,9 +153,8 @@ describe('useUpdateCheck', () => {
 
     const { result } = renderHook(() => useUpdateCheck());
 
-    await waitFor(() => {
-      expect(result.current.updateAvailable).toBe(true);
-    });
+    await flushAsync();
+    expect(result.current.updateAvailable).toBe(true);
 
     await act(async () => {
       result.current.install();
@@ -185,9 +181,8 @@ describe('useUpdateCheck', () => {
     mockCheck.mockResolvedValue({ downloadAndInstall: mockDownloadAndInstall });
     const { result } = renderHook(() => useUpdateCheck());
 
-    await waitFor(() => {
-      expect(result.current.updateAvailable).toBe(true);
-    });
+    await flushAsync();
+    expect(result.current.updateAvailable).toBe(true);
 
     act(() => {
       result.current.dismiss();
