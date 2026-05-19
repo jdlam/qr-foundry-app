@@ -273,13 +273,15 @@ Why this path instead of auto-release: branch protection blocks the workflow's p
 
 ## Version Policy
 
-The app version lives in **3 files** that must stay in sync:
+The app version is canonically defined in **3 source files**:
 
 - `package.json` → `"version"`
 - `src-tauri/tauri.conf.json` → `"version"`
 - `src-tauri/Cargo.toml` → `version` (under `[package]`)
 
-**Never edit these manually.** Always use the release script which updates all three atomically.
+Two lockfiles (`package-lock.json` and `src-tauri/Cargo.lock`) are derived from the above and must update in lockstep. `release.sh` handles all 5 files atomically (3 canonical + 2 derived).
+
+**Never edit these manually.** Always use the release script.
 
 ## Auto-Updater
 
