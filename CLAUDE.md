@@ -249,23 +249,39 @@ Two GitHub Actions workflows:
 
 ## Releasing
 
-Releases are created automatically when a `## [X.Y.Z]` changelog entry is merged to `main`.
-The `release.yml` workflow parses the version, bumps all version files
-(`package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`,
-`src-tauri/Cargo.lock`), and creates a GitHub Release — which triggers `deploy.yml` to build
-and attach platform binaries.
+Releases on this repo are **user-authored**, not bot-automated. Branch protection on `main` blocks the bot's direct push, so there's no `release.yml` workflow. The canonical release path:
 
-You can still use `../scripts/release.sh app vX.Y.Z` for manual releases. Use `--dry-run` to preview without side effects.
+1. Run `../scripts/release.sh app vX.Y.Z` from the parent `qr-foundry/` dir. The script bumps `package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `src-tauri/Cargo.lock` atomically, then commits `chore: release vX.Y.Z`.
+2. The script's `git push origin main` will fail at branch protection. When it does, move the commit to a branch:
+   ```bash
+   git branch chore/release-vX.Y.Z
+   git reset --hard origin/main
+   git checkout chore/release-vX.Y.Z
+   git push -u origin chore/release-vX.Y.Z
+   ```
+3. Open a PR titled `chore: release vX.Y.Z`. Wait for CI, then merge.
+4. Pull `main`, then create the GitHub Release as yourself:
+   ```bash
+   awk '/^## \[X\.Y\.Z\]/{p=1;next} /^## \[/{p=0} p' CHANGELOG.md > /tmp/notes.md
+   gh release create vX.Y.Z --target main --title vX.Y.Z --notes-file /tmp/notes.md
+   ```
+5. `release: published` fires `deploy.yml` (Tauri binary build matrix) and `deploy-web.yml` (web build). Both run automatically — no manual dispatch needed.
+
+Use `--dry-run` with `release.sh` to preview without side effects.
+
+Why this path instead of auto-release: branch protection blocks the workflow's push step. See [`../.claude/skills/ship/SKILL.md`](../.claude/skills/ship/SKILL.md) for the full context. The other three services (site, worker, api) use auto-release workflows that handle everything end-to-end; app is the only exception.
 
 ## Version Policy
 
-The app version lives in **3 files** that must stay in sync:
+The app version is canonically defined in **3 source files**:
 
 - `package.json` → `"version"`
 - `src-tauri/tauri.conf.json` → `"version"`
 - `src-tauri/Cargo.toml` → `version` (under `[package]`)
 
-**Never edit these manually.** Always use the release script which updates all three atomically.
+Two lockfiles (`package-lock.json` and `src-tauri/Cargo.lock`) are derived from the above and must update in lockstep. `release.sh` handles all 5 files atomically (3 canonical + 2 derived).
+
+**Never edit these manually.** Always use the release script.
 
 ## Auto-Updater
 
