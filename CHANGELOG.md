@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-21
+
+### Added
+
+- **Product analytics (web only)** — PostHog integration in identified mode for the authenticated web app (`app.qr-foundry.com`). Identifies users by ID with `email` and `plan_tier` properties on login, signup, session restore, and impersonation; emits `signup_completed` and `dynamic_code_created` events (the latter from both the manager and inline-preview creation paths). Resets analytics on logout and on initialize failure paths so events aren't attributed to prior users. Architecture decision and per-surface config in [ADR-0001](../qr-foundry/plans/architecture/adr/0001-analytics-posthog-split-config.md) (#58)
+- `AnalyticsAdapter` interface (`init`, `identify`, `track`, `reset`) added to `src/platform/types.ts` with web (PostHog) and Tauri (no-op) implementations behind the `@platform` alias
+
+### Privacy
+
+- **Tauri desktop build ships no telemetry.** `posthog-js` is not bundled into the desktop binary — Vite resolves `@platform` to the no-op Tauri adapter at build time. Marketing site and web app are scoped separately per ADR-0001
+- Web app uses identified events with cookies/localStorage; this is acceptable because the user has authenticated and accepted the ToS, and is documented in the ADR
+
+### CI/Tooling
+
+- `deploy-web.yml` now passes `VITE_POSTHOG_KEY` from a GitHub repo variable (public client key, not a secret) into the web build step. Tauri builds in `ci.yml` and `deploy.yml` are unchanged
+
 ## [0.3.0] - 2026-05-18
 
 ### Added
