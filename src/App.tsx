@@ -16,6 +16,7 @@ import './stores/themeStore';
 import { useAuthStore } from './stores/authStore';
 import { useAuthModalStore } from './stores/authModalStore';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
+import { analyticsAdapter } from '@platform';
 
 // Dev-only: expose auth helpers in browser console (calls real impersonation API)
 if (import.meta.env.DEV) {
@@ -34,6 +35,7 @@ function App() {
   const { updateAvailable, installing, install, dismiss } = useUpdateCheck();
 
   useEffect(() => {
+    analyticsAdapter.init();
     useAuthStore.getState().initialize();
   }, []);
 

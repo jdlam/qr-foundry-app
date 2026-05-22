@@ -39,10 +39,11 @@ vi.mock('../api/billing', () => ({
 
 // Import mocked modules
 import { billingApi, ApiError } from '../api/billing';
-import { authAdapter } from '@platform';
+import { authAdapter, analyticsAdapter } from '@platform';
 
 const mockedBilling = vi.mocked(billingApi);
 const mockedAuth = vi.mocked(authAdapter);
+const mockedAnalytics = vi.mocked(analyticsAdapter);
 
 beforeEach(() => {
   // Reset store state
@@ -219,6 +220,109 @@ describe('authStore', () => {
     it('returns true when token is set', () => {
       useAuthStore.setState({ token: validToken });
       expect(useAuthStore.getState().isLoggedIn()).toBe(true);
+    });
+  });
+
+  // The free → trial → paid funnel only works if PostHog has a stable user ID and
+  // the current plan tier on every identified event. These tests assert that the
+  // analytics adapter is wired into the auth lifecycle, not just that identify
+  // exists somewhere.
+  describe('analytics integration', () => {
+    it('identifies the user on login with id, email, and plan tier', async () => {
+      mockedBilling.login.mockResolvedValue({ token: validToken, user: mockUser });
+      mockedBilling.plan.mockResolvedValue(mockPlan);
+
+      await useAuthStore.getState().login('a@b.com', 'password');
+
+      expect(mockedAnalytics.identify).toHaveBeenCalledWith(mockUser.id, {
+        email: mockUser.email,
+        plan_tier: mockPlan.tier,
+      });
+    });
+
+    it('identifies and emits signup_completed on signup', async () => {
+      mockedBilling.signup.mockResolvedValue({ token: validToken, user: mockUser });
+      mockedBilling.plan.mockResolvedValue(mockPlan);
+
+      await useAuthStore.getState().signup('a@b.com', 'password');
+
+      expect(mockedAnalytics.identify).toHaveBeenCalledWith(mockUser.id, {
+        email: mockUser.email,
+        plan_tier: mockPlan.tier,
+      });
+      expect(mockedAnalytics.track).toHaveBeenCalledWith('signup_completed');
+    });
+
+    it('identifies on session restore so reloads stay attributed', async () => {
+      mockedAuth.getToken.mockResolvedValue(validToken);
+      mockedBilling.me.mockResolvedValue(mockUser);
+      mockedBilling.plan.mockResolvedValue(mockPlan);
+
+      await useAuthStore.getState().initialize();
+
+      expect(mockedAnalytics.identify).toHaveBeenCalledWith(mockUser.id, {
+        email: mockUser.email,
+        plan_tier: mockPlan.tier,
+      });
+    });
+
+    it('resets analytics on logout so the next user is not attributed to the previous one', async () => {
+      useAuthStore.setState({ user: mockUser, plan: mockPlan, token: validToken });
+
+      await useAuthStore.getState().logout();
+
+      expect(mockedAnalytics.reset).toHaveBeenCalled();
+    });
+
+    it('does not identify or track when signup fails', async () => {
+      mockedBilling.signup.mockRejectedValue(new Error('bad'));
+
+      await expect(
+        useAuthStore.getState().signup('a@b.com', 'password'),
+      ).rejects.toThrow();
+
+      expect(mockedAnalytics.identify).not.toHaveBeenCalled();
+      expect(mockedAnalytics.track).not.toHaveBeenCalled();
+    });
+
+    it('resets analytics when initialize finds an expired token', async () => {
+      mockedAuth.getToken.mockResolvedValue(expiredToken);
+
+      await useAuthStore.getState().initialize();
+
+      expect(mockedAnalytics.reset).toHaveBeenCalled();
+    });
+
+    it('resets analytics when initialize fails to validate the stored token', async () => {
+      mockedAuth.getToken.mockResolvedValue(validToken);
+      mockedBilling.me.mockRejectedValue(new Error('Network error'));
+
+      await useAuthStore.getState().initialize();
+
+      expect(mockedAnalytics.reset).toHaveBeenCalled();
+    });
+
+    it('resets then identifies on impersonate so events are not merged with the prior user', async () => {
+      const impersonatedUser = { id: 'imp-1', email: 'sub@test.qr-foundry.com', createdAt: '2025-01-01' };
+      const impersonatedPlan = { tier: 'subscription' as const, features: ['dynamic_codes'], maxCodes: 25 };
+      mockedBilling.impersonate.mockResolvedValue({
+        token: validToken,
+        user: impersonatedUser,
+        plan: impersonatedPlan,
+      });
+
+      await useAuthStore.getState().impersonate('subscription', 0);
+
+      expect(mockedAnalytics.reset).toHaveBeenCalled();
+      expect(mockedAnalytics.identify).toHaveBeenCalledWith(impersonatedUser.id, {
+        email: impersonatedUser.email,
+        plan_tier: impersonatedPlan.tier,
+      });
+      // Reset must happen before identify so PostHog assigns a fresh distinct_id
+      // to the impersonated user instead of merging into the previous one.
+      const resetOrder = mockedAnalytics.reset.mock.invocationCallOrder[0];
+      const identifyOrder = mockedAnalytics.identify.mock.invocationCallOrder[0];
+      expect(resetOrder).toBeLessThan(identifyOrder);
     });
   });
 });

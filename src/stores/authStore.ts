@@ -1,8 +1,15 @@
 import { create } from 'zustand';
-import { authAdapter } from '@platform';
+import { authAdapter, analyticsAdapter } from '@platform';
 import { billingApi } from '../api/billing';
 import { registerSessionExpiredHandler, resetSessionExpiredFlag } from '../api/session';
 import type { AuthUser, UserPlan, JwtClaims, PlanTier } from '../api/types';
+
+function identifyForAnalytics(user: AuthUser, plan: UserPlan) {
+  analyticsAdapter.identify(user.id, {
+    email: user.email,
+    plan_tier: plan.tier,
+  });
+}
 
 interface AuthState {
   user: AuthUser | null;
@@ -67,6 +74,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (claims.exp * 1000 <= Date.now()) {
         // Token expired, clear it
         await authAdapter.clearToken();
+        analyticsAdapter.reset();
         set({ isLoading: false });
         return;
       }
@@ -78,10 +86,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       ]);
 
       set({ user, plan, token, isLoading: false });
+      identifyForAnalytics(user, plan);
       scheduleRefresh(token, () => get().refreshToken());
     } catch {
-      // Any error (network, invalid token, etc.) — start unauthenticated
+      // Any error (network, invalid token, etc.) — start unauthenticated.
+      // Reset analytics so events aren't attributed to the previously-identified
+      // user whose distinct_id PostHog persisted in localStorage.
       await authAdapter.clearToken();
+      analyticsAdapter.reset();
       set({ isLoading: false });
     }
   },
@@ -94,6 +106,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       resetSessionExpiredFlag();
       const plan = await billingApi.plan(token);
       set({ user, plan, token, isAuthenticating: false });
+      identifyForAnalytics(user, plan);
       scheduleRefresh(token, () => get().refreshToken());
     } catch (e) {
       set({ isAuthenticating: false });
@@ -109,6 +122,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       resetSessionExpiredFlag();
       const plan = await billingApi.plan(token);
       set({ user, plan, token, isAuthenticating: false });
+      identifyForAnalytics(user, plan);
+      analyticsAdapter.track('signup_completed');
       scheduleRefresh(token, () => get().refreshToken());
     } catch (e) {
       set({ isAuthenticating: false });
@@ -119,6 +134,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async logout() {
     clearRefreshTimer();
     await authAdapter.clearToken();
+    analyticsAdapter.reset();
     set({ user: null, plan: null, token: null });
   },
 
@@ -149,6 +165,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await authAdapter.setToken(token);
     resetSessionExpiredFlag();
     set({ user, plan, token });
+    // Reset first so the impersonated user isn't merged with the prior distinct_id.
+    analyticsAdapter.reset();
+    identifyForAnalytics(user, plan);
     scheduleRefresh(token, () => get().refreshToken());
   },
 

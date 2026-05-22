@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from 'react';
-import { historyAdapter } from '@platform';
+import { historyAdapter, analyticsAdapter } from '@platform';
 import { toast } from 'sonner';
 import { useQrGenerator } from '../../hooks/useQrGenerator';
 import { useValidation } from '../../hooks/useValidation';
@@ -56,6 +56,7 @@ export function Preview() {
       });
       useQrStore.getState().setDynamicShortCode(record.shortCode);
       toast.success(`Dynamic code created: qrfo.link/${record.shortCode}`);
+      analyticsAdapter.track('dynamic_code_created', { source: 'preview' });
       return `https://qrfo.link/${record.shortCode}`;
     } catch (err) {
       if (!isSessionExpired(err)) {

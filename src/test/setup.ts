@@ -49,4 +49,10 @@ vi.mock('@platform', () => ({
     setToken: vi.fn(() => Promise.resolve()),
     clearToken: vi.fn(() => Promise.resolve()),
   },
+  analyticsAdapter: {
+    init: vi.fn(),
+    identify: vi.fn(),
+    track: vi.fn(),
+    reset: vi.fn(),
+  },
 }));

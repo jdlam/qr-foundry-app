@@ -4,6 +4,7 @@ import { useDynamicCodesStore } from '../stores/dynamicCodesStore';
 import { useAuthStore } from '../stores/authStore';
 import { workerApi, WorkerApiError } from '../api/worker';
 import { isSessionExpired } from '../api/session';
+import { analyticsAdapter } from '@platform';
 import type { CreateCodeRequest, UpdateCodeRequest, CodeStatus, DynamicQRRecord } from '../api/types';
 
 function getToken(): string | null {
@@ -64,6 +65,7 @@ export function useDynamicCodes() {
       useDynamicCodesStore.getState().addCodeToList(code);
       useDynamicCodesStore.getState().setSelectedCode(code);
       toast.success(`Created: qrfo.link/${code.shortCode}`);
+      analyticsAdapter.track('dynamic_code_created', { source: 'manager' });
       createdCode = code;
     } catch (err) {
       if (!isSessionExpired(err)) {
