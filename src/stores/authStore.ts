@@ -1,8 +1,15 @@
 import { create } from 'zustand';
-import { authAdapter } from '@platform';
+import { authAdapter, analyticsAdapter } from '@platform';
 import { billingApi } from '../api/billing';
 import { registerSessionExpiredHandler, resetSessionExpiredFlag } from '../api/session';
 import type { AuthUser, UserPlan, JwtClaims, PlanTier } from '../api/types';
+
+function identifyForAnalytics(user: AuthUser, plan: UserPlan) {
+  analyticsAdapter.identify(user.id, {
+    email: user.email,
+    plan_tier: plan.tier,
+  });
+}
 
 interface AuthState {
   user: AuthUser | null;
@@ -78,6 +85,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       ]);
 
       set({ user, plan, token, isLoading: false });
+      identifyForAnalytics(user, plan);
       scheduleRefresh(token, () => get().refreshToken());
     } catch {
       // Any error (network, invalid token, etc.) — start unauthenticated
@@ -94,6 +102,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       resetSessionExpiredFlag();
       const plan = await billingApi.plan(token);
       set({ user, plan, token, isAuthenticating: false });
+      identifyForAnalytics(user, plan);
       scheduleRefresh(token, () => get().refreshToken());
     } catch (e) {
       set({ isAuthenticating: false });
@@ -109,6 +118,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       resetSessionExpiredFlag();
       const plan = await billingApi.plan(token);
       set({ user, plan, token, isAuthenticating: false });
+      identifyForAnalytics(user, plan);
+      analyticsAdapter.track('signup_completed');
       scheduleRefresh(token, () => get().refreshToken());
     } catch (e) {
       set({ isAuthenticating: false });
@@ -119,6 +130,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async logout() {
     clearRefreshTimer();
     await authAdapter.clearToken();
+    analyticsAdapter.reset();
     set({ user: null, plan: null, token: null });
   },
 

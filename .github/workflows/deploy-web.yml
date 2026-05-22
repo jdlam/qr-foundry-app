@@ -62,6 +62,7 @@ jobs:
       - name: Build web (${{ steps.mode.outputs.vite_mode }})
         env:
           VITE_PLATFORM: web
+          VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
         run: npx vite build --mode ${{ steps.mode.outputs.vite_mode }}
 
       - uses: actions/upload-artifact@v4
