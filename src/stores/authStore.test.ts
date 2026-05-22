@@ -284,5 +284,45 @@ describe('authStore', () => {
       expect(mockedAnalytics.identify).not.toHaveBeenCalled();
       expect(mockedAnalytics.track).not.toHaveBeenCalled();
     });
+
+    it('resets analytics when initialize finds an expired token', async () => {
+      mockedAuth.getToken.mockResolvedValue(expiredToken);
+
+      await useAuthStore.getState().initialize();
+
+      expect(mockedAnalytics.reset).toHaveBeenCalled();
+    });
+
+    it('resets analytics when initialize fails to validate the stored token', async () => {
+      mockedAuth.getToken.mockResolvedValue(validToken);
+      mockedBilling.me.mockRejectedValue(new Error('Network error'));
+
+      await useAuthStore.getState().initialize();
+
+      expect(mockedAnalytics.reset).toHaveBeenCalled();
+    });
+
+    it('resets then identifies on impersonate so events are not merged with the prior user', async () => {
+      const impersonatedUser = { id: 'imp-1', email: 'sub@test.qr-foundry.com', createdAt: '2025-01-01' };
+      const impersonatedPlan = { tier: 'subscription' as const, features: ['dynamic_codes'], maxCodes: 25 };
+      mockedBilling.impersonate.mockResolvedValue({
+        token: validToken,
+        user: impersonatedUser,
+        plan: impersonatedPlan,
+      });
+
+      await useAuthStore.getState().impersonate('subscription', 0);
+
+      expect(mockedAnalytics.reset).toHaveBeenCalled();
+      expect(mockedAnalytics.identify).toHaveBeenCalledWith(impersonatedUser.id, {
+        email: impersonatedUser.email,
+        plan_tier: impersonatedPlan.tier,
+      });
+      // Reset must happen before identify so PostHog assigns a fresh distinct_id
+      // to the impersonated user instead of merging into the previous one.
+      const resetOrder = mockedAnalytics.reset.mock.invocationCallOrder[0];
+      const identifyOrder = mockedAnalytics.identify.mock.invocationCallOrder[0];
+      expect(resetOrder).toBeLessThan(identifyOrder);
+    });
   });
 });

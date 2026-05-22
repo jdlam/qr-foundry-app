@@ -16,8 +16,9 @@ let initialized = false;
  * authenticated and accepted the ToS; it's a different posture than the marketing
  * site which stays cookieless.
  *
- * Bails quietly when VITE_POSTHOG_KEY is unset (local dev, CI builds without
- * the secret, Tauri build which doesn't load this module).
+ * Bails quietly when VITE_POSTHOG_KEY is unset (local dev without .env.local,
+ * CI builds where the GitHub variable isn't wired, Tauri build which doesn't
+ * load this module). The key is a public client key, not a secret.
  */
 export const analyticsAdapter: AnalyticsAdapter = {
   init() {

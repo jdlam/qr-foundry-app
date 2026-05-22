@@ -74,6 +74,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (claims.exp * 1000 <= Date.now()) {
         // Token expired, clear it
         await authAdapter.clearToken();
+        analyticsAdapter.reset();
         set({ isLoading: false });
         return;
       }
@@ -88,8 +89,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       identifyForAnalytics(user, plan);
       scheduleRefresh(token, () => get().refreshToken());
     } catch {
-      // Any error (network, invalid token, etc.) — start unauthenticated
+      // Any error (network, invalid token, etc.) — start unauthenticated.
+      // Reset analytics so events aren't attributed to the previously-identified
+      // user whose distinct_id PostHog persisted in localStorage.
       await authAdapter.clearToken();
+      analyticsAdapter.reset();
       set({ isLoading: false });
     }
   },
@@ -161,6 +165,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await authAdapter.setToken(token);
     resetSessionExpiredFlag();
     set({ user, plan, token });
+    // Reset first so the impersonated user isn't merged with the prior distinct_id.
+    analyticsAdapter.reset();
+    identifyForAnalytics(user, plan);
     scheduleRefresh(token, () => get().refreshToken());
   },
 
