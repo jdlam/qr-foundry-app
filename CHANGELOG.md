@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-23
+
+### Added — Product analytics (web only)
+
+10 new tracked events covering the auth, generation, export, dynamic-code lifecycle, analytics-view, paywall, and template flows. All client-side, no PII (only enums, counts, booleans). Tauri desktop build remains telemetry-free via the no-op `@platform` adapter.
+
+- `login_completed` — fires on `authStore.login` success (separate from `signup_completed`)
+- `paywall_hit { feature }` — logged-in free user hits a gated feature in `useFeatureAccess.requireAccess` (the friction signal for free→trial conversion)
+- `auth_modal_opened { trigger }` — `authModalStore.open` with a typed trigger enum (`sidebar`, `gated_feature`, `dynamic_code_button`, `dynamic_code_inline_create`)
+- `dynamic_code_updated { changed_destination, changed_label }` — `useDynamicCodes.updateCode` on success
+- `dynamic_code_paused` — additional event when an update sets status='paused' (separates intent-to-cancel from generic edits)
+- `dynamic_code_deleted` — `useDynamicCodes.deleteCode` on success
+- `analytics_viewed { scope }` — fires on mount of `AnalyticsView` (per_code) and `AnalyticsOverview` (overview)
+- `qr_generated { input_type, committed_via }` — fires once per `(input_type, content)` pair on the first commit action (validate/export/copy). Content itself is never sent, only the enum
+- `qr_exported { format }` — `useExport` on success for PNG/SVG/clipboard
+- `template_saved` / `template_loaded` — `useTemplates.saveTemplate` and `TemplatesView.handleApplyTemplate` (#61)
+
+### Changed
+
+- `authModalStore.open` now accepts an optional `trigger` argument. A new `setOpen(bool)` exists for the Radix Dialog `onOpenChange` bridge — it does NOT fire analytics, preventing double-counts when the dialog state changes
+
 ## [0.4.0] - 2026-05-22
 
 ### Added
