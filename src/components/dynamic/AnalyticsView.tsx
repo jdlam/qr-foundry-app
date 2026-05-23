@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useAnalytics } from '../../hooks/useAnalytics';
 import { BarChart } from './BarChart';
 import { DateRangeSelector } from './DateRangeSelector';
+import { analyticsAdapter } from '@platform';
 
 interface AnalyticsViewProps {
   shortCode: string;
@@ -21,6 +22,7 @@ export function AnalyticsView({ shortCode, onBack }: AnalyticsViewProps) {
 
   useEffect(() => {
     fetchCodeAnalytics(shortCode);
+    analyticsAdapter.track('analytics_viewed', { scope: 'per_code' });
   }, [fetchCodeAnalytics, shortCode]);
 
   return (

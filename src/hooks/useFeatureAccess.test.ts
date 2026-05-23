@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useFeatureAccess } from './useFeatureAccess';
 import { useAuthModalStore } from '../stores/authModalStore';
+import { analyticsAdapter } from '@platform';
+
+const mockedAnalytics = vi.mocked(analyticsAdapter);
 
 // Mock useAuth hook
 let mockAuthState = {
@@ -38,6 +41,7 @@ describe('useFeatureAccess', () => {
       logout: vi.fn(),
     };
     mockToast.mockReset();
+    mockedAnalytics.track.mockClear();
     useAuthModalStore.getState().close();
   });
 
@@ -104,6 +108,44 @@ describe('useFeatureAccess', () => {
     it('returns true for free features when not logged in', () => {
       const { result } = renderHook(() => useFeatureAccess('basic_qr_types'));
       expect(result.current.requireAccess()).toBe(true);
+    });
+
+    // Paywall hits are the most direct signal of free→paid friction. We only
+    // fire for logged-in free users: a logged-out user opening the auth modal
+    // is captured by auth_modal_opened with trigger='gated_feature' instead.
+    it('fires paywall_hit when a logged-in free user hits a gated feature', () => {
+      mockAuthState.plan = { tier: 'free', features: ['basic_qr_types'], maxCodes: 0 };
+      mockAuthState.isLoggedIn = true;
+
+      const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
+      result.current.requireAccess();
+
+      expect(mockedAnalytics.track).toHaveBeenCalledWith('paywall_hit', {
+        feature: 'dynamic_codes',
+      });
+    });
+
+    it('does NOT fire paywall_hit when a logged-out user hits a gated feature', () => {
+      const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
+      result.current.requireAccess();
+
+      expect(mockedAnalytics.track).not.toHaveBeenCalledWith(
+        'paywall_hit',
+        expect.anything(),
+      );
+    });
+
+    it('does NOT fire paywall_hit when the user has access', () => {
+      mockAuthState.plan = { tier: 'subscription', features: ['dynamic_codes'], maxCodes: 25 };
+      mockAuthState.isLoggedIn = true;
+
+      const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
+      result.current.requireAccess();
+
+      expect(mockedAnalytics.track).not.toHaveBeenCalledWith(
+        'paywall_hit',
+        expect.anything(),
+      );
     });
   });
 });

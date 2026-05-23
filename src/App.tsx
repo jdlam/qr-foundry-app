@@ -102,10 +102,7 @@ function App() {
 
       <AuthModal
         open={authModalOpen}
-        onOpenChange={(open) => {
-          if (open) useAuthModalStore.getState().open();
-          else useAuthModalStore.getState().close();
-        }}
+        onOpenChange={(open) => useAuthModalStore.getState().setOpen(open)}
       />
     </div>
   );

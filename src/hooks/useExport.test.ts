@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useExport } from './useExport';
-import { exportAdapter, clipboardAdapter, filesystemAdapter } from '@platform';
+import { exportAdapter, clipboardAdapter, filesystemAdapter, analyticsAdapter } from '@platform';
 
 const mockExportPng = vi.mocked(exportAdapter.exportPng);
 const mockExportSvg = vi.mocked(exportAdapter.exportSvg);
 const mockCopyImage = vi.mocked(clipboardAdapter.copyImage);
 const mockPickImageFile = vi.mocked(filesystemAdapter.pickImageFile);
+const mockedAnalytics = vi.mocked(analyticsAdapter);
 
 describe('useExport', () => {
   beforeEach(() => {
@@ -209,6 +210,50 @@ describe('useExport', () => {
       });
 
       expect(path).toBeNull();
+    });
+  });
+
+  // qr_exported is what tells us "the user actually used a QR they made"
+  // — distinct from just typing in the generator. We fire on every commit
+  // (no dedup) because each export is a discrete intent.
+  describe('analytics', () => {
+    it('fires qr_exported with format=png on PNG export success', async () => {
+      mockExportPng.mockResolvedValueOnce({ success: true, path: '/x.png', error: null });
+      const { result } = renderHook(() => useExport());
+      await act(async () => {
+        await result.current.exportPng('data:image/png;base64,abc');
+      });
+      expect(mockedAnalytics.track).toHaveBeenCalledWith('qr_exported', { format: 'png' });
+    });
+
+    it('fires qr_exported with format=svg on SVG export success', async () => {
+      mockExportSvg.mockResolvedValueOnce({ success: true, path: '/x.svg', error: null });
+      const { result } = renderHook(() => useExport());
+      await act(async () => {
+        await result.current.exportSvg('<svg/>');
+      });
+      expect(mockedAnalytics.track).toHaveBeenCalledWith('qr_exported', { format: 'svg' });
+    });
+
+    it('fires qr_exported with format=clipboard on copy success', async () => {
+      mockCopyImage.mockResolvedValueOnce(true);
+      const { result } = renderHook(() => useExport());
+      await act(async () => {
+        await result.current.copyToClipboard('data:image/png;base64,abc');
+      });
+      expect(mockedAnalytics.track).toHaveBeenCalledWith('qr_exported', { format: 'clipboard' });
+    });
+
+    it('does NOT fire qr_exported when the user cancels the save dialog', async () => {
+      mockExportPng.mockResolvedValueOnce({ success: false, path: null, error: 'cancelled' });
+      const { result } = renderHook(() => useExport());
+      await act(async () => {
+        await result.current.exportPng('data:image/png;base64,abc');
+      });
+      expect(mockedAnalytics.track).not.toHaveBeenCalledWith(
+        'qr_exported',
+        expect.anything(),
+      );
     });
   });
 

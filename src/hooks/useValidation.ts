@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { scannerAdapter } from '@platform';
 import { useQrStore } from '../stores/qrStore';
+import { fireQrGeneratedIfNew } from '../lib/qrGeneratedTracker';
 import type { ValidationState } from '../types/qr';
 import type { ValidationResult, ScanResult } from '../platform/types';
 
@@ -9,7 +10,7 @@ export type { ValidationResult, ScanResult };
 export function useValidation() {
   const [isValidating, setIsValidating] = useState(false);
   const [result, setResult] = useState<ValidationResult | null>(null);
-  const { content, setValidationState } = useQrStore();
+  const { content, inputType, setValidationState } = useQrStore();
 
   const validate = useCallback(
     async (imageDataUrl: string): Promise<ValidationResult | null> => {
@@ -26,6 +27,7 @@ export function useValidation() {
 
         setResult(result);
         setValidationState(result.state as ValidationState);
+        fireQrGeneratedIfNew(inputType, content, 'validate');
         return result;
       } catch (error) {
         console.error('Validation error:', error);
@@ -42,7 +44,7 @@ export function useValidation() {
         setIsValidating(false);
       }
     },
-    [content, setValidationState]
+    [content, inputType, setValidationState]
   );
 
   const resetValidation = useCallback(() => {

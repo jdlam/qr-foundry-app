@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { templateAdapter } from '@platform';
+import { templateAdapter, analyticsAdapter } from '@platform';
 import type { Template, NewTemplate } from '../platform/types';
 
 export type { Template, NewTemplate };
@@ -35,6 +35,7 @@ export function useTemplates() {
       try {
         const id = await templateAdapter.save(template);
         await fetchTemplates();
+        analyticsAdapter.track('template_saved');
         return id;
       } catch (error) {
         console.error('Failed to save template:', error);
