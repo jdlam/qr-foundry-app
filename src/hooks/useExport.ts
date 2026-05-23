@@ -1,8 +1,16 @@
 import { useCallback, useState } from 'react';
-import { exportAdapter, clipboardAdapter, filesystemAdapter } from '@platform';
+import { exportAdapter, clipboardAdapter, filesystemAdapter, analyticsAdapter } from '@platform';
+import { useQrStore } from '../stores/qrStore';
+import { fireQrGeneratedIfNew } from '../lib/qrGeneratedTracker';
 import type { ExportResult } from '../platform/types';
 
 export type { ExportResult };
+
+function trackExportCommit(format: 'png' | 'svg' | 'clipboard'): void {
+  const { inputType, content } = useQrStore.getState();
+  if (content) fireQrGeneratedIfNew(inputType, content, 'export');
+  analyticsAdapter.track('qr_exported', { format });
+}
 
 export function useExport() {
   const [isExporting, setIsExporting] = useState(false);
@@ -16,6 +24,7 @@ export function useExport() {
 
         if (result.success && result.path) {
           setLastExportPath(result.path);
+          trackExportCommit('png');
         }
 
         return result;
@@ -41,6 +50,7 @@ export function useExport() {
 
         if (result.success && result.path) {
           setLastExportPath(result.path);
+          trackExportCommit('svg');
         }
 
         return result;
@@ -61,6 +71,7 @@ export function useExport() {
   const copyToClipboard = useCallback(async (imageDataUrl: string): Promise<boolean> => {
     try {
       await clipboardAdapter.copyImage(imageDataUrl);
+      trackExportCommit('clipboard');
       return true;
     } catch (error) {
       console.error('Copy to clipboard error:', error);

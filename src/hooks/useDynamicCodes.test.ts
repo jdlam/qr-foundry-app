@@ -4,7 +4,10 @@ import { useDynamicCodes } from './useDynamicCodes';
 import { useDynamicCodesStore } from '../stores/dynamicCodesStore';
 import { useAuthStore } from '../stores/authStore';
 import { workerApi } from '../api/worker';
+import { analyticsAdapter } from '@platform';
 import type { DynamicQRRecord } from '../api/types';
+
+const mockedAnalytics = vi.mocked(analyticsAdapter);
 
 vi.mock('../api/worker', () => ({
   workerApi: {
@@ -194,6 +197,82 @@ describe('useDynamicCodes', () => {
       const { result } = renderHook(() => useDynamicCodes());
       act(() => result.current.setStatusFilter('active'));
       expect(result.current.statusFilter).toBe('active');
+    });
+  });
+
+  // These events drive the trial→paid analysis: updates show ongoing value
+  // from the paid feature; paused/deleted are intent-to-cancel signals worth
+  // separating from generic edits.
+  describe('analytics', () => {
+    it('fires dynamic_code_updated with property flags on update success', async () => {
+      const updated = makeCode('abc', { destinationUrl: 'https://new.com' });
+      useDynamicCodesStore.getState().setCodes([makeCode('abc')]);
+      vi.mocked(workerApi.updateCode).mockResolvedValue(updated);
+
+      const { result } = renderHook(() => useDynamicCodes());
+      await act(async () => {
+        await result.current.updateCode('abc', { destinationUrl: 'https://new.com' });
+      });
+
+      expect(mockedAnalytics.track).toHaveBeenCalledWith('dynamic_code_updated', {
+        changed_destination: true,
+        changed_label: false,
+      });
+    });
+
+    it('fires dynamic_code_paused in addition to dynamic_code_updated when status goes to paused', async () => {
+      const paused = makeCode('abc', { status: 'paused' });
+      useDynamicCodesStore.getState().setCodes([makeCode('abc')]);
+      vi.mocked(workerApi.updateCode).mockResolvedValue(paused);
+      vi.mocked(workerApi.getUsage).mockResolvedValue(mockUsage);
+
+      const { result } = renderHook(() => useDynamicCodes());
+      await act(async () => {
+        await result.current.updateCode('abc', { status: 'paused' });
+      });
+
+      expect(mockedAnalytics.track).toHaveBeenCalledWith('dynamic_code_paused');
+    });
+
+    it('does NOT fire dynamic_code_paused when status goes to active', async () => {
+      const active = makeCode('abc', { status: 'active' });
+      useDynamicCodesStore.getState().setCodes([makeCode('abc', { status: 'paused' })]);
+      vi.mocked(workerApi.updateCode).mockResolvedValue(active);
+      vi.mocked(workerApi.getUsage).mockResolvedValue(mockUsage);
+
+      const { result } = renderHook(() => useDynamicCodes());
+      await act(async () => {
+        await result.current.updateCode('abc', { status: 'active' });
+      });
+
+      expect(mockedAnalytics.track).not.toHaveBeenCalledWith('dynamic_code_paused');
+    });
+
+    it('does NOT fire any update event when the update fails', async () => {
+      vi.mocked(workerApi.updateCode).mockRejectedValue(new Error('fail'));
+
+      const { result } = renderHook(() => useDynamicCodes());
+      await act(async () => {
+        await result.current.updateCode('abc', { destinationUrl: 'https://new.com' });
+      });
+
+      expect(mockedAnalytics.track).not.toHaveBeenCalledWith(
+        'dynamic_code_updated',
+        expect.anything(),
+      );
+    });
+
+    it('fires dynamic_code_deleted on delete success', async () => {
+      useDynamicCodesStore.getState().setCodes([makeCode('abc')]);
+      vi.mocked(workerApi.deleteCode).mockResolvedValue({ deleted: 'abc' });
+      vi.mocked(workerApi.getUsage).mockResolvedValue(mockUsage);
+
+      const { result } = renderHook(() => useDynamicCodes());
+      await act(async () => {
+        await result.current.deleteCode('abc');
+      });
+
+      expect(mockedAnalytics.track).toHaveBeenCalledWith('dynamic_code_deleted');
     });
   });
 });

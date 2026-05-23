@@ -284,7 +284,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-bg)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--panel-bg)'; }}
-                onClick={openAuthModal}
+                onClick={() => openAuthModal('sidebar')}
                 title="Sign In"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -385,7 +385,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                 className="flex items-center gap-2.5 flex-1 cursor-pointer rounded-sm transition-colors p-0"
                 onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = ''; }}
-                onClick={openAuthModal}
+                onClick={() => openAuthModal('sidebar')}
               >
                 <div
                   className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0"

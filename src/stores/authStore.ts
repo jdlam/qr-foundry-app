@@ -107,6 +107,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const plan = await billingApi.plan(token);
       set({ user, plan, token, isAuthenticating: false });
       identifyForAnalytics(user, plan);
+      analyticsAdapter.track('login_completed');
       scheduleRefresh(token, () => get().refreshToken());
     } catch (e) {
       set({ isAuthenticating: false });

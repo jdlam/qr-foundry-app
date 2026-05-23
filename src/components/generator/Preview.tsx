@@ -44,7 +44,7 @@ export function Preview() {
 
     const token = useAuthStore.getState().token;
     if (!token) {
-      useAuthModalStore.getState().open();
+      useAuthModalStore.getState().open('dynamic_code_inline_create');
       return null;
     }
 

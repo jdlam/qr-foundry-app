@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useAnalytics } from '../../hooks/useAnalytics';
 import { BarChart } from './BarChart';
 import { DateRangeSelector } from './DateRangeSelector';
+import { analyticsAdapter } from '@platform';
 
 interface AnalyticsOverviewProps {
   onBack: () => void;
@@ -20,6 +21,7 @@ export function AnalyticsOverview({ onBack }: AnalyticsOverviewProps) {
 
   useEffect(() => {
     fetchOverview();
+    analyticsAdapter.track('analytics_viewed', { scope: 'overview' });
   }, [fetchOverview]);
 
   return (

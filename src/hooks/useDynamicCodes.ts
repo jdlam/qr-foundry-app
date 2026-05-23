@@ -91,6 +91,15 @@ export function useDynamicCodes() {
       const updated = await workerApi.updateCode(token, shortCode, body);
       useDynamicCodesStore.getState().updateCodeInList(shortCode, updated);
       toast.success('Code updated');
+      analyticsAdapter.track('dynamic_code_updated', {
+        changed_destination: body.destinationUrl !== undefined,
+        changed_label: body.label !== undefined,
+      });
+      // Status change is its own event so the funnel can isolate "pause as
+      // intent-to-cancel" from generic edits.
+      if (body.status === 'paused') {
+        analyticsAdapter.track('dynamic_code_paused');
+      }
       success = true;
     } catch (err) {
       if (!isSessionExpired(err)) {
@@ -116,6 +125,7 @@ export function useDynamicCodes() {
       await workerApi.deleteCode(token, shortCode);
       useDynamicCodesStore.getState().removeCodeFromList(shortCode);
       toast.success('Code deleted');
+      analyticsAdapter.track('dynamic_code_deleted');
       deleted = true;
     } catch (err) {
       if (!isSessionExpired(err)) {

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useTemplates, type Template } from '../../hooks/useTemplates';
 import { useQrStore } from '../../stores/qrStore';
+import { analyticsAdapter } from '@platform';
 
 export function TemplatesView() {
   const { templates, isLoading, fetchTemplates, saveTemplate, deleteTemplate, setDefaultTemplate } =
@@ -36,6 +37,7 @@ export function TemplatesView() {
         if (style.logo) store.setLogo(style.logo);
         if (style.errorCorrection) store.setErrorCorrection(style.errorCorrection);
         toast.success(`Applied "${template.name}" template`);
+        analyticsAdapter.track('template_loaded');
       } catch {
         toast.error('Failed to apply template');
       }

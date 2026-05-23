@@ -186,7 +186,7 @@ export function DynamicCodesView() {
           Create QR codes with changeable destinations. Track scans, manage redirects, and view analytics.
         </div>
         <button
-          onClick={isLoggedIn ? requireAccess : openAuthModal}
+          onClick={isLoggedIn ? requireAccess : () => openAuthModal('dynamic_code_button')}
           className="px-6 py-2.5 rounded-sm text-sm font-semibold transition-all"
           style={{
             background: 'var(--accent)',

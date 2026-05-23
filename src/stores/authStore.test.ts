@@ -240,6 +240,15 @@ describe('authStore', () => {
       });
     });
 
+    it('emits login_completed on successful login (separate from signup)', async () => {
+      mockedBilling.login.mockResolvedValue({ token: validToken, user: mockUser });
+      mockedBilling.plan.mockResolvedValue(mockPlan);
+
+      await useAuthStore.getState().login('a@b.com', 'password');
+
+      expect(mockedAnalytics.track).toHaveBeenCalledWith('login_completed');
+    });
+
     it('identifies and emits signup_completed on signup', async () => {
       mockedBilling.signup.mockResolvedValue({ token: validToken, user: mockUser });
       mockedBilling.plan.mockResolvedValue(mockPlan);
