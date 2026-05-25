@@ -19,10 +19,16 @@ function setSearch(search: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   setSearch('');
+  useAuthStore.setState({
+    isLoading: false,
+    token: 'test-token',
+    plan: { tier: 'free', features: [], maxCodes: 0 },
+  } as unknown as AuthPartial);
   useUpgradeModalStore.setState({ isOpen: false, feature: null, checkoutInFlight: false });
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   setSearch('');
 });
 
@@ -32,7 +38,11 @@ describe('usePlanRefetchOnReturn', () => {
     // must be stripped so a refresh doesn't re-fire the success toast.
     it('on ?upgrade=success refetches the plan, confirms, clears in-flight, and strips the param', async () => {
       setSearch('?upgrade=success');
-      const fetchPlan = vi.fn().mockResolvedValue(undefined);
+      const fetchPlan = vi.fn().mockImplementation(async () => {
+        useAuthStore.setState({
+          plan: { tier: 'subscription', features: [], maxCodes: 25 },
+        } as unknown as AuthPartial);
+      });
       useAuthStore.setState({ fetchPlan } as unknown as AuthPartial);
       useUpgradeModalStore.setState({ checkoutInFlight: true });
 
@@ -44,6 +54,64 @@ describe('usePlanRefetchOnReturn', () => {
       expect(toast.success).toHaveBeenCalled();
       expect(useUpgradeModalStore.getState().checkoutInFlight).toBe(false);
       expect(window.location.search).toBe('');
+    });
+
+    it('waits for auth initialization before refetching after ?upgrade=success', async () => {
+      setSearch('?upgrade=success');
+      const fetchPlan = vi.fn().mockImplementation(async () => {
+        useAuthStore.setState({
+          plan: { tier: 'subscription', features: [], maxCodes: 25 },
+        } as unknown as AuthPartial);
+      });
+      useAuthStore.setState({
+        fetchPlan,
+        isLoading: true,
+        token: null,
+      } as unknown as AuthPartial);
+      useUpgradeModalStore.setState({ checkoutInFlight: true });
+
+      const { rerender } = renderHook(() => usePlanRefetchOnReturn());
+
+      expect(fetchPlan).not.toHaveBeenCalled();
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(useUpgradeModalStore.getState().checkoutInFlight).toBe(true);
+      expect(window.location.search).toBe('');
+
+      await act(async () => {
+        useAuthStore.setState({
+          isLoading: false,
+          token: 'restored-token',
+        } as unknown as AuthPartial);
+        rerender();
+      });
+
+      expect(fetchPlan).toHaveBeenCalledTimes(1);
+      expect(toast.success).toHaveBeenCalled();
+      expect(useUpgradeModalStore.getState().checkoutInFlight).toBe(false);
+    });
+
+    it('does not claim success when the returned checkout cannot be confirmed as subscription', async () => {
+      vi.useFakeTimers();
+      setSearch('?upgrade=success');
+      const fetchPlan = vi.fn().mockResolvedValue(undefined);
+      useAuthStore.setState({
+        fetchPlan,
+        plan: { tier: 'free', features: [], maxCodes: 0 },
+      } as unknown as AuthPartial);
+      useUpgradeModalStore.setState({ checkoutInFlight: true });
+
+      await act(async () => {
+        renderHook(() => usePlanRefetchOnReturn());
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+
+      expect(fetchPlan).toHaveBeenCalledTimes(3);
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalled();
+      expect(useUpgradeModalStore.getState().checkoutInFlight).toBe(false);
+      vi.useRealTimers();
     });
 
     // Cancel means no entitlement change — we must not refetch or claim success,
@@ -139,6 +207,22 @@ describe('usePlanRefetchOnReturn', () => {
       });
 
       expect(fetchPlan).toHaveBeenCalledTimes(1);
+    });
+
+    it('catches focus refetch failures and leaves checkout in flight for a later retry', async () => {
+      const fetchPlan = vi.fn().mockRejectedValue(new Error('network down'));
+      useAuthStore.setState({ fetchPlan } as unknown as AuthPartial);
+      useUpgradeModalStore.setState({ checkoutInFlight: true });
+
+      renderHook(() => usePlanRefetchOnReturn());
+
+      await act(async () => {
+        window.dispatchEvent(new Event('focus'));
+      });
+
+      expect(fetchPlan).toHaveBeenCalledTimes(1);
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(useUpgradeModalStore.getState().checkoutInFlight).toBe(true);
     });
   });
 });
