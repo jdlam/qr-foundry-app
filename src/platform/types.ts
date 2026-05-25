@@ -191,9 +191,11 @@ export interface AuthAdapter {
 // --- Open External ---
 
 export interface OpenExternalAdapter {
-  // Opens a URL outside the app. On web, opens a new tab/navigates; on desktop
-  // (Tauri), hands off to the OS default browser. Used for Stripe-hosted
-  // checkout — the desktop app must NOT render Stripe in a webview.
+  // Sends the user to a URL outside the app. On web, navigates the current tab
+  // (Stripe redirects back to our origin, so same-tab keeps the return flow
+  // coherent); on desktop (Tauri), hands off to the OS default browser. Used
+  // for Stripe-hosted checkout — the desktop app must NOT render Stripe in a
+  // webview.
   open(url: string): Promise<void>;
 }
 

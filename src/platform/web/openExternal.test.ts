@@ -26,31 +26,21 @@ describe('web openExternalAdapter', () => {
     });
   });
 
-  it('opens the URL in a new tab with noopener,noreferrer', async () => {
-    // Must use these flags so the Stripe tab cannot navigate back to our origin
-    // via window.opener, and so the browser doesn't send a Referer header.
-    const mockOpen = vi.spyOn(window, 'open').mockReturnValue({} as Window);
-
-    await openExternalAdapter.open(TEST_URL);
-
-    expect(mockOpen).toHaveBeenCalledWith(TEST_URL, '_blank', 'noopener,noreferrer');
-  });
-
-  it('falls back to location.assign when window.open is blocked (returns null)', async () => {
-    // Popup blockers return null from window.open. Without the fallback, the
-    // user never reaches Stripe and the in-flight flag stays set forever.
-    vi.spyOn(window, 'open').mockReturnValue(null);
-
+  it('navigates the current tab to the URL', async () => {
     await openExternalAdapter.open(TEST_URL);
 
     expect(assignMock).toHaveBeenCalledWith(TEST_URL);
   });
 
-  it('does NOT call location.assign when window.open succeeds', async () => {
-    vi.spyOn(window, 'open').mockReturnValue({} as Window);
+  it('does not open a new tab', async () => {
+    // Same-tab is deliberate: Stripe redirects back to our origin with
+    // ?upgrade=success, which usePlanRefetchOnReturn reads on mount. A new tab
+    // would land the entitlement in a second tab while this one stayed stale,
+    // so opening one must NOT regress back in.
+    const openSpy = vi.spyOn(window, 'open');
 
     await openExternalAdapter.open(TEST_URL);
 
-    expect(assignMock).not.toHaveBeenCalled();
+    expect(openSpy).not.toHaveBeenCalled();
   });
 });

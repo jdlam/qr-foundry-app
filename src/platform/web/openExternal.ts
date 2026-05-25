@@ -2,12 +2,13 @@ import type { OpenExternalAdapter } from '../types';
 
 export const openExternalAdapter: OpenExternalAdapter = {
   async open(url: string): Promise<void> {
-    // Must be called synchronously from a user gesture (the checkout button's
-    // onClick) or the browser may block the new tab. If the popup is blocked
-    // (returns null), fall back to navigating the current tab.
-    const opened = window.open(url, '_blank', 'noopener,noreferrer');
-    if (!opened) {
-      window.location.assign(url);
-    }
+    // Navigate the current tab rather than opening a new one. Stripe Checkout is
+    // a full-page hosted flow that redirects back to our origin with
+    // ?upgrade=success|cancel, which usePlanRefetchOnReturn reads on mount — a
+    // same-tab redirect keeps that return flow coherent (a new tab would land
+    // the entitlement in a second tab while this one stayed stale). It also
+    // sidesteps popup blockers, which reject window.open here anyway since this
+    // runs after an await, past the click's transient activation.
+    window.location.assign(url);
   },
 };
