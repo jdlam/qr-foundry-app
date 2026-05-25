@@ -15,6 +15,11 @@ interface UpgradeModalState {
   // focus-refetch hook to re-check entitlement when the window regains focus.
   // Cleared when the plan upgrades or when checkout is abandoned.
   checkoutInFlight: boolean;
+  // Wall-clock time (ms) when checkout went in flight, or null otherwise. The
+  // desktop focus-refetch poll uses this to bound how long it keeps re-checking
+  // entitlement, so a user who opens checkout but never pays isn't polled on
+  // every window focus indefinitely (desktop has no ?upgrade=success return).
+  checkoutStartedAt: number | null;
   open: (trigger?: UpgradeModalTrigger, feature?: string) => void;
   // setOpen is for controlled-component bridges (Radix Dialog onOpenChange).
   setOpen: (isOpen: boolean) => void;
@@ -26,6 +31,7 @@ export const useUpgradeModalStore = create<UpgradeModalState>((set) => ({
   isOpen: false,
   feature: null,
   checkoutInFlight: false,
+  checkoutStartedAt: null,
   // The paywall_hit event already fires at the requireAccess call site, so the
   // store deliberately does NOT emit analytics on open — that would double-count
   // the friction signal. The conversion intent (checkout_started) fires from the
@@ -33,5 +39,6 @@ export const useUpgradeModalStore = create<UpgradeModalState>((set) => ({
   open: (_trigger = 'unknown', feature) => set({ isOpen: true, feature: feature ?? null }),
   setOpen: (isOpen) => set({ isOpen }),
   close: () => set({ isOpen: false }),
-  setCheckoutInFlight: (inFlight) => set({ checkoutInFlight: inFlight }),
+  setCheckoutInFlight: (inFlight) =>
+    set({ checkoutInFlight: inFlight, checkoutStartedAt: inFlight ? Date.now() : null }),
 }));

@@ -24,7 +24,12 @@ beforeEach(() => {
     token: 'test-token',
     plan: { tier: 'free', features: [], maxCodes: 0 },
   } as unknown as AuthPartial);
-  useUpgradeModalStore.setState({ isOpen: false, feature: null, checkoutInFlight: false });
+  useUpgradeModalStore.setState({
+    isOpen: false,
+    feature: null,
+    checkoutInFlight: false,
+    checkoutStartedAt: null,
+  });
 });
 
 afterEach(() => {
@@ -207,6 +212,31 @@ describe('usePlanRefetchOnReturn', () => {
       });
 
       expect(fetchPlan).toHaveBeenCalledTimes(1);
+    });
+
+    // A user who opens checkout but never pays would otherwise be polled on
+    // every window focus forever (desktop has no return param to clear it), so
+    // the watch window must give up and stop polling after it elapses.
+    it('stops polling on focus once the checkout watch window has elapsed', async () => {
+      const fetchPlan = vi.fn().mockResolvedValue(undefined);
+      useAuthStore.setState({
+        fetchPlan,
+        plan: { tier: 'free', features: [], maxCodes: 0 },
+      } as unknown as AuthPartial);
+      // Checkout started well beyond the 15-minute watch window.
+      useUpgradeModalStore.setState({
+        checkoutInFlight: true,
+        checkoutStartedAt: Date.now() - 16 * 60 * 1000,
+      });
+
+      renderHook(() => usePlanRefetchOnReturn());
+
+      await act(async () => {
+        window.dispatchEvent(new Event('focus'));
+      });
+
+      expect(fetchPlan).not.toHaveBeenCalled();
+      expect(useUpgradeModalStore.getState().checkoutInFlight).toBe(false);
     });
 
     it('catches focus refetch failures and leaves checkout in flight for a later retry', async () => {

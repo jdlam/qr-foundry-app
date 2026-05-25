@@ -7,6 +7,7 @@ beforeEach(() => {
     isOpen: false,
     feature: null,
     checkoutInFlight: false,
+    checkoutStartedAt: null,
   });
 });
 
@@ -68,6 +69,16 @@ describe('upgradeModalStore', () => {
       useUpgradeModalStore.getState().setCheckoutInFlight(true);
       useUpgradeModalStore.getState().setCheckoutInFlight(false);
       expect(useUpgradeModalStore.getState().checkoutInFlight).toBe(false);
+    });
+
+    it('stamps checkoutStartedAt when in flight and clears it when not', () => {
+      // The desktop focus poll bounds itself off this timestamp, so it must be
+      // set on the rising edge and cleared on the falling edge.
+      useUpgradeModalStore.getState().setCheckoutInFlight(true);
+      expect(useUpgradeModalStore.getState().checkoutStartedAt).toEqual(expect.any(Number));
+
+      useUpgradeModalStore.getState().setCheckoutInFlight(false);
+      expect(useUpgradeModalStore.getState().checkoutStartedAt).toBeNull();
     });
   });
 });

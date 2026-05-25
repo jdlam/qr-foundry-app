@@ -9,6 +9,11 @@ import { readUpgradeReturn, clearUpgradeReturn } from '../lib/upgradeUrls';
 const MIN_REFETCH_INTERVAL_MS = 3000;
 const WEB_CONFIRM_ATTEMPTS = 3;
 const WEB_CONFIRM_RETRY_MS = 1000;
+// How long the desktop focus path keeps re-checking entitlement after checkout
+// starts. Generous enough to cover a real Stripe checkout (card entry, 3DS),
+// but bounded so a user who opens checkout and never pays isn't polled on every
+// window focus indefinitely (desktop has no ?upgrade=success return to clear it).
+const FOCUS_WATCH_TTL_MS = 15 * 60 * 1000;
 
 const SUBSCRIPTION_ACTIVE_MESSAGE = "You're all set — your subscription is active.";
 const SUBSCRIPTION_CONFIRM_ERROR =
@@ -92,10 +97,20 @@ export function usePlanRefetchOnReturn(): void {
   // Desktop focus path — refetch while checkout is in flight.
   useEffect(() => {
     const onFocus = () => {
-      const { checkoutInFlight, setCheckoutInFlight } = useUpgradeModalStore.getState();
+      const { checkoutInFlight, checkoutStartedAt, setCheckoutInFlight } =
+        useUpgradeModalStore.getState();
       if (!checkoutInFlight) return;
 
       const now = Date.now();
+
+      // Give up once checkout has been open longer than the watch window — the
+      // user likely abandoned it. Without this the focus poll would re-hit
+      // /api/me/plan on every window focus forever on desktop.
+      if (checkoutStartedAt !== null && now - checkoutStartedAt > FOCUS_WATCH_TTL_MS) {
+        setCheckoutInFlight(false);
+        return;
+      }
+
       if (now - lastRefetchRef.current < MIN_REFETCH_INTERVAL_MS) return;
       lastRefetchRef.current = now;
 
