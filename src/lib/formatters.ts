@@ -31,6 +31,24 @@ function escapeWifiField(value: string): string {
 }
 
 /**
+ * Escape special characters in vCard 3.0 TEXT values per RFC 2426 §4.
+ * The semicolon and comma are structural delimiters in vCard properties;
+ * an unescaped comma in ORG causes parsers to split the value into a list,
+ * and an unescaped semicolon in N shifts name components, corrupting the
+ * contact on import. Raw newlines create bogus top-level content lines that
+ * strict parsers (iOS, Android Contacts) reject or import as garbage.
+ */
+function escapeVCardText(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r\n/g, '\\n')
+    .replace(/\r/g, '\\n')
+    .replace(/\n/g, '\\n');
+}
+
+/**
  * Format vCard for QR code
  * Using vCard 3.0 format for compatibility
  */
@@ -40,18 +58,19 @@ export function formatVCard(config: VCardConfig): string {
     'VERSION:3.0',
   ];
 
-  // Name (required)
-  lines.push(`N:${config.lastName || ''};${config.firstName || ''};;;`);
-  lines.push(`FN:${[config.firstName, config.lastName].filter(Boolean).join(' ')}`);
+  // Name (required) — lastName and firstName are N components separated by `;`
+  // so each must be escaped independently to avoid shifting the component order
+  lines.push(`N:${escapeVCardText(config.lastName || '')};${escapeVCardText(config.firstName || '')};;;`);
+  lines.push(`FN:${escapeVCardText([config.firstName, config.lastName].filter(Boolean).join(' '))}`);
 
   // Organization
   if (config.organization) {
-    lines.push(`ORG:${config.organization}`);
+    lines.push(`ORG:${escapeVCardText(config.organization)}`);
   }
 
   // Title
   if (config.title) {
-    lines.push(`TITLE:${config.title}`);
+    lines.push(`TITLE:${escapeVCardText(config.title)}`);
   }
 
   // Phone
@@ -69,15 +88,17 @@ export function formatVCard(config: VCardConfig): string {
     lines.push(`URL:${config.url}`);
   }
 
-  // Address
+  // Address — street is a TEXT component within the ADR structured value;
+  // escape it so a semicolon in the street does not shift city/state/zip/country
   if (config.address) {
     const { street, city, state, zip, country } = config.address;
-    lines.push(`ADR:;;${street || ''};${city || ''};${state || ''};${zip || ''};${country || ''}`);
+    lines.push(`ADR:;;${escapeVCardText(street || '')};${escapeVCardText(city || '')};${escapeVCardText(state || '')};${escapeVCardText(zip || '')};${escapeVCardText(country || '')}`);
   }
 
   lines.push('END:VCARD');
 
-  return lines.join('\n');
+  // RFC 2426 §2.1: content lines MUST be terminated with CRLF
+  return lines.join('\r\n');
 }
 
 /**
