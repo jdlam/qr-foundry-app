@@ -137,12 +137,16 @@ describe('formatVCard', () => {
       organization: 'Acme, Inc.',
       title: 'VP, Engineering',
     });
-    // A raw comma would cause RFC 2426 parsers to treat "Inc." as a second ORG value
-    expect(result).toContain('ORG:Acme\\, Inc.');
-    expect(result).toContain('TITLE:VP\\, Engineering');
-    // No unescaped comma must appear in these property values
-    expect(result).not.toMatch(/^ORG:[^\\],/m);
-    expect(result).not.toMatch(/^TITLE:[^\\],/m);
+    // Exact-line assertions: if escapeVCardText's comma rule were removed,
+    // these would produce 'ORG:Acme, Inc.' and 'TITLE:VP, Engineering' and fail.
+    const lines = result.split('\r\n');
+    const orgLine = lines.find((l) => l.startsWith('ORG:'));
+    const titleLine = lines.find((l) => l.startsWith('TITLE:'));
+    expect(orgLine).toBe('ORG:Acme\\, Inc.');
+    expect(titleLine).toBe('TITLE:VP\\, Engineering');
+    // No unescaped comma may appear anywhere in either value (negative-lookbehind guard)
+    expect(orgLine).not.toMatch(/(?<!\\),/);
+    expect(titleLine).not.toMatch(/(?<!\\),/);
   });
 
   it('backslash-escapes semicolons in N and ADR so field components are not shifted', () => {
@@ -204,6 +208,55 @@ describe('formatVCard', () => {
     expect(result).toContain('\r\n');
     // Every line break must be CRLF — no bare LF
     expect(result).not.toMatch(/[^\r]\n/);
+  });
+
+  // vCard line injection: a raw CR or LF embedded in TEL, EMAIL, or URL would
+  // split the value across two content lines, injecting attacker-controlled or
+  // malformed vCard properties. These fields are stripped (not \n-escaped) because
+  // a newline in a phone number, email address, or URI is always malformed input.
+  it('strips embedded newlines from TEL to prevent vCard line injection', () => {
+    const result = formatVCard({
+      firstName: 'John',
+      lastName: 'Doe',
+      phone: '+1-555-0100\r\nBEGIN:VCARD\r\nVERSION:3.0\r\nFN:Injected',
+    });
+    const lines = result.split('\r\n');
+    const telLine = lines.find((l) => l.startsWith('TEL:'));
+    // The injected CRLF must be stripped — TEL value is all on one line, no embedded breaks
+    expect(telLine).toBeDefined();
+    expect(telLine).toBe('TEL:+1-555-0100BEGIN:VCARDVERSION:3.0FN:Injected');
+    // Only one BEGIN:VCARD line — the injected one was stripped into the TEL value
+    expect(lines.filter((l) => l === 'BEGIN:VCARD').length).toBe(1);
+    // TEL line must not contain a newline
+    expect(telLine).not.toMatch(/[\r\n]/);
+  });
+
+  it('strips embedded newlines from EMAIL to prevent vCard line injection', () => {
+    const result = formatVCard({
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'user@example.com\nBEGIN:VCARD',
+    });
+    const lines = result.split('\r\n');
+    const emailLine = lines.find((l) => l.startsWith('EMAIL:'));
+    expect(emailLine).toBeDefined();
+    expect(emailLine).not.toMatch(/[\r\n]/);
+    // Only one BEGIN:VCARD line — the injected one was stripped
+    expect(lines.filter((l) => l === 'BEGIN:VCARD').length).toBe(1);
+  });
+
+  it('strips embedded newlines from URL to prevent vCard line injection', () => {
+    const result = formatVCard({
+      firstName: 'John',
+      lastName: 'Doe',
+      url: 'https://example.com\r\nBEGIN:VCARD',
+    });
+    const lines = result.split('\r\n');
+    const urlLine = lines.find((l) => l.startsWith('URL:'));
+    expect(urlLine).toBeDefined();
+    expect(urlLine).not.toMatch(/[\r\n]/);
+    // Only one BEGIN:VCARD line — the injected one was stripped
+    expect(lines.filter((l) => l === 'BEGIN:VCARD').length).toBe(1);
   });
 });
 

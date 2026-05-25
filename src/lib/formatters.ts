@@ -49,6 +49,20 @@ function escapeVCardText(value: string): string {
 }
 
 /**
+ * Strip CR and LF from vCard typed-value fields (TEL, EMAIL, URL).
+ * These fields are NOT backslash-escaped because commas and semicolons are
+ * valid characters in phone numbers, email addresses, and URIs. However,
+ * a raw CR or LF in any of them injects an extra content line into the vCard
+ * output (vCard line injection) and can reintroduce a bare LF despite the
+ * CRLF join. A newline inside a URI, phone, or email is always malformed
+ * input — strip it rather than encoding it as \n (which would be meaningless
+ * in those value types and would corrupt the field).
+ */
+function stripVCardLineBreaks(value: string): string {
+  return value.replace(/[\r\n]+/g, '');
+}
+
+/**
  * Format vCard for QR code
  * Using vCard 3.0 format for compatibility
  */
@@ -75,17 +89,17 @@ export function formatVCard(config: VCardConfig): string {
 
   // Phone
   if (config.phone) {
-    lines.push(`TEL:${config.phone}`);
+    lines.push(`TEL:${stripVCardLineBreaks(config.phone)}`);
   }
 
   // Email
   if (config.email) {
-    lines.push(`EMAIL:${config.email}`);
+    lines.push(`EMAIL:${stripVCardLineBreaks(config.email)}`);
   }
 
   // URL
   if (config.url) {
-    lines.push(`URL:${config.url}`);
+    lines.push(`URL:${stripVCardLineBreaks(config.url)}`);
   }
 
   // Address — all ADR components (street, city, state, zip, country) are TEXT
