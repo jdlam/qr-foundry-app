@@ -61,6 +61,23 @@ export type ImpersonateResponse = AuthResponse & {
   plan: UserPlan;
 };
 
+// Billing — Stripe checkout. Mirrors the contract in
+// ../qr-foundry-api/src/types.ts (CheckoutRequest / BillingSessionResponse).
+// Keep these in sync with that file, which is the source of truth.
+
+export type CheckoutProduct = 'subscription';
+
+export interface CheckoutRequest {
+  product: CheckoutProduct;
+  billing?: 'monthly' | 'annual';
+  successUrl: string;
+  cancelUrl: string;
+}
+
+export interface BillingSessionResponse {
+  url: string;
+}
+
 // Worker API types
 
 export type CodeStatus = 'active' | 'paused' | 'expired';

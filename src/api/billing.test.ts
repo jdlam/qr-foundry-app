@@ -169,6 +169,71 @@ describe('billingApi', () => {
     });
   });
 
+  describe('checkout', () => {
+    it('posts to /api/billing/checkout with correct body and bearer auth for monthly billing', async () => {
+      // The checkout request must include all Stripe-required fields; wrong billing
+      // period or missing auth would produce the wrong Stripe price or a 401.
+      const data = { url: 'https://checkout.stripe.com/pay/cs_test_abc' };
+      mockFetch.mockResolvedValue(jsonResponse({ success: true, data }));
+
+      const result = await billingApi.checkout('tok999', {
+        billing: 'monthly',
+        successUrl: 'https://app.qr-foundry.com/?upgrade=success',
+        cancelUrl: 'https://app.qr-foundry.com/?upgrade=cancel',
+      });
+
+      expect(result).toEqual(data);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/billing/checkout'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer tok999' }),
+          body: JSON.stringify({
+            product: 'subscription',
+            billing: 'monthly',
+            successUrl: 'https://app.qr-foundry.com/?upgrade=success',
+            cancelUrl: 'https://app.qr-foundry.com/?upgrade=cancel',
+          }),
+        }),
+      );
+    });
+
+    it('sends billing: annual in the body when annual period is selected', async () => {
+      // Annual vs monthly maps to different Stripe prices server-side; the body
+      // value must be forwarded verbatim — never hardcoded.
+      const data = { url: 'https://checkout.stripe.com/pay/cs_test_annual' };
+      mockFetch.mockResolvedValue(jsonResponse({ success: true, data }));
+
+      await billingApi.checkout('tokAnnual', {
+        billing: 'annual',
+        successUrl: 'https://app.qr-foundry.com/?upgrade=success',
+        cancelUrl: 'https://app.qr-foundry.com/?upgrade=cancel',
+      });
+
+      const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(JSON.parse(options.body as string)).toMatchObject({ billing: 'annual' });
+    });
+
+    it('throws ApiError when the API returns success: false', async () => {
+      // A failed checkout (e.g. duplicate subscription) must surface as an
+      // ApiError so UpgradeModal can toast the message and reset in-flight state.
+      mockFetch.mockResolvedValue(jsonResponse({ success: false, error: 'Already subscribed' }, 400));
+
+      try {
+        await billingApi.checkout('tok', {
+          billing: 'monthly',
+          successUrl: 'https://app.qr-foundry.com/?upgrade=success',
+          cancelUrl: 'https://app.qr-foundry.com/?upgrade=cancel',
+        });
+        expect.unreachable('Should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(ApiError);
+        expect((err as ApiError).message).toBe('Already subscribed');
+        expect((err as ApiError).status).toBe(400);
+      }
+    });
+  });
+
   describe('error handling', () => {
     it('uses status text when no error message in body', async () => {
       mockFetch.mockResolvedValue(jsonResponse({ success: false }, 500));

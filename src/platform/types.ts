@@ -188,6 +188,15 @@ export interface AuthAdapter {
   clearToken(): Promise<void>;
 }
 
+// --- Open External ---
+
+export interface OpenExternalAdapter {
+  // Opens a URL outside the app. On web, opens a new tab/navigates; on desktop
+  // (Tauri), hands off to the OS default browser. Used for Stripe-hosted
+  // checkout — the desktop app must NOT render Stripe in a webview.
+  open(url: string): Promise<void>;
+}
+
 // --- Analytics ---
 
 export interface AnalyticsAdapter {

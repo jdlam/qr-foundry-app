@@ -9,13 +9,16 @@ import { HistoryView } from './components/history/HistoryView';
 import { TemplatesView } from './components/templates/TemplatesView';
 import { BatchView } from './components/batch/BatchView';
 import { AuthModal } from './components/auth/AuthModal';
+import { UpgradeModal } from './components/upgrade/UpgradeModal';
 import { DynamicCodesView } from './components/dynamic/DynamicCodesView';
 
 // Ensure theme is initialized
 import './stores/themeStore';
 import { useAuthStore } from './stores/authStore';
 import { useAuthModalStore } from './stores/authModalStore';
+import { useUpgradeModalStore } from './stores/upgradeModalStore';
 import { useUpdateCheck } from './hooks/useUpdateCheck';
+import { usePlanRefetchOnReturn } from './hooks/usePlanRefetchOnReturn';
 import { analyticsAdapter } from '@platform';
 
 // Dev-only: expose auth helpers in browser console (calls real impersonation API)
@@ -32,7 +35,9 @@ if (import.meta.env.DEV) {
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('generator');
   const authModalOpen = useAuthModalStore((s) => s.isOpen);
+  const upgradeModalOpen = useUpgradeModalStore((s) => s.isOpen);
   const { updateAvailable, installing, install, dismiss } = useUpdateCheck();
+  usePlanRefetchOnReturn();
 
   useEffect(() => {
     analyticsAdapter.init();
@@ -103,6 +108,11 @@ function App() {
       <AuthModal
         open={authModalOpen}
         onOpenChange={(open) => useAuthModalStore.getState().setOpen(open)}
+      />
+
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={(open) => useUpgradeModalStore.getState().setOpen(open)}
       />
     </div>
   );

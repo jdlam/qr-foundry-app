@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useFeatureAccess } from './useFeatureAccess';
 import { useAuthModalStore } from '../stores/authModalStore';
+import { useUpgradeModalStore } from '../stores/upgradeModalStore';
 import { analyticsAdapter } from '@platform';
 
 const mockedAnalytics = vi.mocked(analyticsAdapter);
@@ -43,6 +44,7 @@ describe('useFeatureAccess', () => {
     mockToast.mockReset();
     mockedAnalytics.track.mockClear();
     useAuthModalStore.getState().close();
+    useUpgradeModalStore.getState().close();
   });
 
   describe('hasAccess', () => {
@@ -87,6 +89,7 @@ describe('useFeatureAccess', () => {
       const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
       expect(result.current.requireAccess()).toBe(true);
       expect(useAuthModalStore.getState().isOpen).toBe(false);
+      expect(useUpgradeModalStore.getState().isOpen).toBe(false);
       expect(mockToast).not.toHaveBeenCalled();
     });
 
@@ -94,15 +97,26 @@ describe('useFeatureAccess', () => {
       const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
       expect(result.current.requireAccess()).toBe(false);
       expect(useAuthModalStore.getState().isOpen).toBe(true);
+      // Logged-out users go to auth, NOT the upgrade modal — they can't pay yet.
+      expect(useUpgradeModalStore.getState().isOpen).toBe(false);
     });
 
-    it('shows toast when logged in without access', () => {
+    // The conversion fix: a logged-in free user who hits a gate now sees the
+    // upgrade modal (the path to Stripe checkout) instead of a dead-end toast.
+    // This is the whole point of the feature — without it there is no in-app
+    // way to convert.
+    it('opens the upgrade modal when logged in without access', () => {
       mockAuthState.plan = { tier: 'free', features: ['basic_qr_types', 'svg_export'], maxCodes: 0 };
       mockAuthState.isLoggedIn = true;
 
       const { result } = renderHook(() => useFeatureAccess('dynamic_codes'));
       expect(result.current.requireAccess()).toBe(false);
-      expect(mockToast).toHaveBeenCalledWith('Subscribe to unlock this feature');
+      expect(useUpgradeModalStore.getState().isOpen).toBe(true);
+      expect(useUpgradeModalStore.getState().feature).toBe('dynamic_codes');
+      // No dead-end toast anymore.
+      expect(mockToast).not.toHaveBeenCalled();
+      // And it does NOT route to the auth modal.
+      expect(useAuthModalStore.getState().isOpen).toBe(false);
     });
 
     it('returns true for free features when not logged in', () => {
