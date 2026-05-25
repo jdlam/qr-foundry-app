@@ -8,3 +8,4 @@ export { batchAdapter } from './batch';
 export { dragDropAdapter } from './dragdrop';
 export { authAdapter } from './auth';
 export { analyticsAdapter } from './analytics';
+export { openExternalAdapter } from './openExternal';

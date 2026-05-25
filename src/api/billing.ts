@@ -1,4 +1,4 @@
-import type { ApiResponse, AuthResponse, AuthUser, ImpersonateResponse, PlanTier, UserPlan } from './types';
+import type { ApiResponse, AuthResponse, AuthUser, BillingSessionResponse, ImpersonateResponse, PlanTier, UserPlan } from './types';
 import { handleSessionExpired } from './session';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.qr-foundry.com';
@@ -73,6 +73,26 @@ export const billingApi = {
   async plan(token: string): Promise<UserPlan> {
     return request<UserPlan>('/api/me/plan', {
       headers: authHeaders(token),
+    });
+  },
+
+  // Creates a Stripe-hosted Checkout Session for the single paid subscription
+  // tier. The 14-day free trial is applied server-side for first-time
+  // subscribers — the client passes nothing for that. Returns the hosted
+  // Checkout URL to hand to the openExternal adapter.
+  async checkout(
+    token: string,
+    opts: { billing: 'monthly' | 'annual'; successUrl: string; cancelUrl: string },
+  ): Promise<BillingSessionResponse> {
+    return request<BillingSessionResponse>('/api/billing/checkout', {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify({
+        product: 'subscription',
+        billing: opts.billing,
+        successUrl: opts.successUrl,
+        cancelUrl: opts.cancelUrl,
+      }),
     });
   },
 

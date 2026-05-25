@@ -55,4 +55,7 @@ vi.mock('@platform', () => ({
     track: vi.fn(),
     reset: vi.fn(),
   },
+  openExternalAdapter: {
+    open: vi.fn(() => Promise.resolve()),
+  },
 }));

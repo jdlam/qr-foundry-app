@@ -1,6 +1,6 @@
-import { toast } from 'sonner';
 import { useAuth } from './useAuth';
 import { useAuthModalStore } from '../stores/authModalStore';
+import { useUpgradeModalStore } from '../stores/upgradeModalStore';
 import { FREE_FEATURES } from '../api/types';
 import { analyticsAdapter } from '@platform';
 import type { FeatureKey } from '../api/types';
@@ -20,9 +20,10 @@ export function useFeatureAccess(feature: FeatureKey) {
 
     // Logged-in free user hit a paywall. This is the key friction signal for
     // free→paid conversion analysis — separate from auth_modal_opened, which
-    // fires on the logged-out path above.
+    // fires on the logged-out path above. The upgrade modal is the conversion
+    // action: it leads to Stripe checkout (checkout_started fires there).
     analyticsAdapter.track('paywall_hit', { feature });
-    toast('Subscribe to unlock this feature');
+    useUpgradeModalStore.getState().open('gated_feature', feature);
     return false;
   };
 
