@@ -34,7 +34,7 @@ vi.mock('@radix-ui/react-dialog', async (importActual) => {
     },
     Root: (props: Record<string, unknown>) => {
       _lastRootProps = props;
-      return actual.Root(props as Parameters<typeof actual.Root>[0]);
+      return React.createElement(actual.Root, props as Parameters<typeof actual.Root>[0]);
     },
   };
 });

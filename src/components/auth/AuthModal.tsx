@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useLayoutEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { toast } from 'sonner';
 import { useAuth } from '../../hooks/useAuth';
@@ -23,10 +23,12 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   };
 
   // Reset form when the modal opens so re-opens always start blank.
+  // useLayoutEffect (not useEffect) so the reset runs synchronously before the
+  // browser paints, eliminating any one-frame flash of stale credentials on re-open.
   // resetForm is intentionally NOT called on close — closing the modal (e.g.
   // via a password-manager icon click triggering Radix's dismiss) must not
   // wipe credentials the user has already typed. APP-F11.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open) resetForm();
   }, [open]);
 
