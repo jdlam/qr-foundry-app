@@ -201,9 +201,20 @@ export interface OpenExternalAdapter {
 
 // --- Analytics ---
 
+export interface ConsentState {
+  enabled: boolean;
+  prompted: boolean;
+}
+
 export interface AnalyticsAdapter {
   init(): void;
   identify(userId: string, properties?: Record<string, unknown>): void;
   track(event: string, properties?: Record<string, unknown>): void;
   reset(): void;
+  /** Returns the current consent state (whether telemetry is enabled and whether the user has been prompted). */
+  getConsent(): Promise<ConsentState>;
+  /** Persists the user's telemetry preference and updates the runtime gate. */
+  setConsentEnabled(enabled: boolean): Promise<void>;
+  /** Marks the first-run prompt as shown so it never appears again. */
+  markConsentPrompted(): Promise<void>;
 }

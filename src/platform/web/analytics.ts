@@ -1,5 +1,5 @@
 import posthog from 'posthog-js';
-import type { AnalyticsAdapter } from '../types';
+import type { AnalyticsAdapter, ConsentState } from '../types';
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
 const POSTHOG_HOST =
@@ -51,5 +51,19 @@ export const analyticsAdapter: AnalyticsAdapter = {
   reset() {
     if (!initialized) return;
     posthog.reset();
+  },
+
+  // Web tracking is implicit-via-ToS and cookieless (ADR-0001).
+  // The consent dialog never shows on web; these are no-ops.
+  async getConsent(): Promise<ConsentState> {
+    return { enabled: true, prompted: true };
+  },
+
+  async setConsentEnabled(_enabled: boolean): Promise<void> {
+    // no-op on web
+  },
+
+  async markConsentPrompted(): Promise<void> {
+    // no-op on web
   },
 };

@@ -11,6 +11,8 @@ import { BatchView } from './components/batch/BatchView';
 import { AuthModal } from './components/auth/AuthModal';
 import { UpgradeModal } from './components/upgrade/UpgradeModal';
 import { DynamicCodesView } from './components/dynamic/DynamicCodesView';
+import { SettingsView } from './components/settings/SettingsView';
+import { TelemetryConsentDialog } from './components/consent/TelemetryConsentDialog';
 
 // Ensure theme is initialized
 import './stores/themeStore';
@@ -74,6 +76,8 @@ function App() {
         return <TemplatesView />;
       case 'dynamic':
         return <DynamicCodesView />;
+      case 'settings':
+        return <SettingsView />;
       default:
         return null;
     }
@@ -114,6 +118,8 @@ function App() {
         open={upgradeModalOpen}
         onOpenChange={(open) => useUpgradeModalStore.getState().setOpen(open)}
       />
+
+      <TelemetryConsentDialog />
     </div>
   );
 }

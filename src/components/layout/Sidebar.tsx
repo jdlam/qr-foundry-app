@@ -4,8 +4,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { useAuthModalStore } from '../../stores/authModalStore';
 import { useAuthStore } from '../../stores/authStore';
 import type { PlanTier } from '../../api/types';
+import { isTauri } from '../../lib/platform';
 
-type TabId = 'generator' | 'batch' | 'scanner' | 'history' | 'templates' | 'dynamic';
+type TabId = 'generator' | 'batch' | 'scanner' | 'history' | 'templates' | 'dynamic' | 'settings';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -18,6 +19,7 @@ interface NavItem {
   icon: React.ReactNode;
   badge?: 'soon';
   premium?: boolean;
+  desktopOnly?: boolean;
 }
 
 function formatTierLabel(tier: string): string {
@@ -100,6 +102,17 @@ const NAV_ITEMS: NavItem[] = [
       </svg>
     ),
     premium: true,
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    desktopOnly: true,
+    icon: (
+      <svg className="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    ),
   },
 ];
 
@@ -243,7 +256,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     >
       {/* Navigation */}
       <nav className="flex-1 py-3 px-2 flex flex-col gap-0.5">
-        {NAV_ITEMS.map((item) => (
+        {NAV_ITEMS.filter((item) => !item.desktopOnly || isTauri()).map((item) => (
           <NavButton
             key={item.id}
             item={item}
