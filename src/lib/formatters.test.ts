@@ -125,6 +125,139 @@ describe('formatVCard', () => {
     expect(result).not.toContain('ORG:');
     expect(result).not.toContain('TEL:');
   });
+
+  // vCard 3.0 (RFC 2426) treats `;` and `,` as structural delimiters in TEXT
+  // values. An unescaped comma in ORG causes parsers to split the field; an
+  // unescaped semicolon in the N property shifts every name component, producing
+  // a wrong name on import. These are silent data-corruption bugs on a contact QR.
+  it('backslash-escapes commas in TEXT fields so parsers do not split on them', () => {
+    const result = formatVCard({
+      firstName: 'John',
+      lastName: 'Doe',
+      organization: 'Acme, Inc.',
+      title: 'VP, Engineering',
+    });
+    // Exact-line assertions: if escapeVCardText's comma rule were removed,
+    // these would produce 'ORG:Acme, Inc.' and 'TITLE:VP, Engineering' and fail.
+    const lines = result.split('\r\n');
+    const orgLine = lines.find((l) => l.startsWith('ORG:'));
+    const titleLine = lines.find((l) => l.startsWith('TITLE:'));
+    expect(orgLine).toBe('ORG:Acme\\, Inc.');
+    expect(titleLine).toBe('TITLE:VP\\, Engineering');
+    // No unescaped comma may appear anywhere in either value (negative-lookbehind guard)
+    expect(orgLine).not.toMatch(/(?<!\\),/);
+    expect(titleLine).not.toMatch(/(?<!\\),/);
+  });
+
+  it('backslash-escapes semicolons in N and ADR so field components are not shifted', () => {
+    // An unescaped ; in lastName shifts the N components: "Doe;Jr" → the parser
+    // reads "Jr" as the first name, discarding the rest. Same in ADR: an unescaped
+    // ; in street shifts city/state/zip/country into the wrong positions.
+    const result = formatVCard({
+      firstName: 'John',
+      lastName: 'Doe;Jr',
+      address: {
+        street: '1 Main; Suite 2',
+        city: 'Springfield',
+        state: 'IL',
+        zip: '62701',
+        country: 'USA',
+      },
+    });
+    expect(result).toContain('N:Doe\\;Jr;John;;;');
+    expect(result).toContain('ADR:;;1 Main\\; Suite 2;Springfield;IL;62701;USA');
+  });
+
+  it('backslash-escapes backslash characters before other escaping', () => {
+    // A literal backslash in a value must be doubled first; otherwise the escape
+    // sequences we add would produce incorrect output (e.g. "C:\\n" would be read
+    // as "C:" + escaped-newline instead of "C:\n").
+    const result = formatVCard({
+      firstName: 'John',
+      lastName: 'Doe',
+      organization: 'C:\\Corp',
+    });
+    expect(result).toContain('ORG:C:\\\\Corp');
+  });
+
+  it('converts raw newlines in TEXT fields to the literal \\n escape sequence', () => {
+    // A raw newline inside a vCard property value creates a new top-level vCard
+    // line, which strict parsers (iOS, Android) reject or import as garbage.
+    // RFC 2426 §4: newlines in TEXT must be represented as the two-char sequence \n.
+    const result = formatVCard({
+      firstName: 'John',
+      lastName: 'Doe',
+      title: 'Engineer\nArchitect',
+    });
+    expect(result).toContain('TITLE:Engineer\\nArchitect');
+    // The raw newline must not appear inside any property value line
+    const titleLine = result.split('\r\n').find((l) => l.startsWith('TITLE:'));
+    expect(titleLine).toBeDefined();
+    expect(titleLine).not.toContain('\n');
+  });
+
+  it('joins vCard lines with CRLF per RFC 2426 so strict parsers accept it', () => {
+    // RFC 2426 §2.1 mandates CRLF as the content line separator.
+    // A bare LF is accepted by many parsers but rejected by strict ones (e.g. iOS
+    // Contacts on older OS versions). The calendar formatter already uses CRLF;
+    // vCard must match.
+    const result = formatVCard({
+      firstName: 'Jane',
+      lastName: 'Doe',
+    });
+    expect(result).toContain('\r\n');
+    // Every line break must be CRLF — no bare LF
+    expect(result).not.toMatch(/[^\r]\n/);
+  });
+
+  // vCard line injection: a raw CR or LF embedded in TEL, EMAIL, or URL would
+  // split the value across two content lines, injecting attacker-controlled or
+  // malformed vCard properties. These fields are stripped (not \n-escaped) because
+  // a newline in a phone number, email address, or URI is always malformed input.
+  it('strips embedded newlines from TEL to prevent vCard line injection', () => {
+    const result = formatVCard({
+      firstName: 'John',
+      lastName: 'Doe',
+      phone: '+1-555-0100\r\nBEGIN:VCARD\r\nVERSION:3.0\r\nFN:Injected',
+    });
+    const lines = result.split('\r\n');
+    const telLine = lines.find((l) => l.startsWith('TEL:'));
+    // The injected CRLF must be stripped — TEL value is all on one line, no embedded breaks
+    expect(telLine).toBeDefined();
+    expect(telLine).toBe('TEL:+1-555-0100BEGIN:VCARDVERSION:3.0FN:Injected');
+    // Only one BEGIN:VCARD line — the injected one was stripped into the TEL value
+    expect(lines.filter((l) => l === 'BEGIN:VCARD').length).toBe(1);
+    // TEL line must not contain a newline
+    expect(telLine).not.toMatch(/[\r\n]/);
+  });
+
+  it('strips embedded newlines from EMAIL to prevent vCard line injection', () => {
+    const result = formatVCard({
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'user@example.com\nBEGIN:VCARD',
+    });
+    const lines = result.split('\r\n');
+    const emailLine = lines.find((l) => l.startsWith('EMAIL:'));
+    expect(emailLine).toBeDefined();
+    expect(emailLine).not.toMatch(/[\r\n]/);
+    // Only one BEGIN:VCARD line — the injected one was stripped
+    expect(lines.filter((l) => l === 'BEGIN:VCARD').length).toBe(1);
+  });
+
+  it('strips embedded newlines from URL to prevent vCard line injection', () => {
+    const result = formatVCard({
+      firstName: 'John',
+      lastName: 'Doe',
+      url: 'https://example.com\r\nBEGIN:VCARD',
+    });
+    const lines = result.split('\r\n');
+    const urlLine = lines.find((l) => l.startsWith('URL:'));
+    expect(urlLine).toBeDefined();
+    expect(urlLine).not.toMatch(/[\r\n]/);
+    // Only one BEGIN:VCARD line — the injected one was stripped
+    expect(lines.filter((l) => l === 'BEGIN:VCARD').length).toBe(1);
+  });
 });
 
 describe('formatEmail', () => {
