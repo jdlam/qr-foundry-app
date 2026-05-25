@@ -97,7 +97,7 @@ export function formatVCard(config: VCardConfig): string {
 
   lines.push('END:VCARD');
 
-  // RFC 2426 §2.1: content lines MUST be terminated with CRLF
+  // RFC 2426 §2.1: content lines are separated by CRLF
   return lines.join('\r\n');
 }
 
