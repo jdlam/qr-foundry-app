@@ -413,6 +413,38 @@ describe('Tauri analytics adapter', () => {
       expect(body.properties.$geoip_disable).toBe(true);
       expect(body.properties.$ip).toBe('0');
     });
+
+    it('privacy props cannot be overridden by call-site properties (defense-in-depth)', async () => {
+      // WHY: The privacy guarantee ($ip:'0', $geoip_disable:true, platform:'desktop')
+      // must hold even if a future call site inadvertently passes conflicting values.
+      // This test fails if ...properties is spread AFTER the fixed central props,
+      // i.e. if the spread order is ever reverted to the unsafe form.
+      setupStore({
+        installId: MOCK_INSTALL_ID,
+        telemetryEnabled: true,
+        lastActiveDate: TODAY,
+      });
+
+      adapter.init();
+      await analyticsReady;
+
+      // Attempt to override the three privacy-critical central props from a call site.
+      adapter.track('some_event', {
+        $ip: 'attacker-ip',
+        platform: 'web',
+        $geoip_disable: false,
+      });
+      await new Promise((r) => setTimeout(r, 20));
+
+      const body = JSON.parse(
+        mockFetch.mock.calls[mockFetch.mock.calls.length - 1][1].body as string
+      ) as { properties: Record<string, unknown> };
+
+      // All three must reflect the fixed central values, not the caller-supplied values.
+      expect(body.properties.$ip).toBe('0');
+      expect(body.properties.$geoip_disable).toBe(true);
+      expect(body.properties.platform).toBe('desktop');
+    });
   });
 
   describe('empty distinct_id guard', () => {

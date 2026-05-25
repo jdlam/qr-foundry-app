@@ -8,7 +8,7 @@
  * - Closing via the X button is treated the same as "No thanks" (leave disabled).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { TelemetryConsentDialog } from './TelemetryConsentDialog';
 
 // Mock @platform so the component never imports tauri code in the test env.
@@ -119,7 +119,9 @@ describe('TelemetryConsentDialog', () => {
       render(<TelemetryConsentDialog />);
       await waitFor(() => screen.getByRole('dialog'));
 
-      fireEvent.click(screen.getByRole('button', { name: /close/i }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /close/i }));
+      });
 
       expect(analyticsAdapter.markConsentPrompted).toHaveBeenCalled();
       expect(analyticsAdapter.setConsentEnabled).not.toHaveBeenCalled();

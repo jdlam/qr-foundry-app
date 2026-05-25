@@ -46,14 +46,15 @@ async function sendCapture(
         distinct_id: distinctId,
         event,
         properties: {
+          ...properties,
           platform: 'desktop',
           app_version: APP_VERSION,
           os: getOs(),
           // Minimise location collection: override the stored IP AND explicitly
           // disable GeoIP enrichment ($ip:'0' alone doesn't, since '0' is truthy).
+          // These are written AFTER ...properties so a call site can never override them.
           $ip: '0',
           $geoip_disable: true,
-          ...properties,
         },
         timestamp: new Date().toISOString(),
       }),

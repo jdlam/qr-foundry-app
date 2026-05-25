@@ -78,12 +78,12 @@ export function SettingsView() {
           className="rounded-sm p-4"
           style={{ background: 'var(--panel-bg)', border: '1px solid var(--border)' }}
         >
-          <div
+          <h2
             className="text-[11px] font-mono font-bold uppercase tracking-wide mb-3"
             style={{ color: 'var(--text-faint)' }}
           >
             Privacy
-          </div>
+          </h2>
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
