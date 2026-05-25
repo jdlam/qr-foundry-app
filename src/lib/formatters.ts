@@ -88,8 +88,9 @@ export function formatVCard(config: VCardConfig): string {
     lines.push(`URL:${config.url}`);
   }
 
-  // Address — street is a TEXT component within the ADR structured value;
-  // escape it so a semicolon in the street does not shift city/state/zip/country
+  // Address — all ADR components (street, city, state, zip, country) are TEXT
+  // values within the structured field; escape each so embedded semicolons do
+  // not shift the remaining positional components
   if (config.address) {
     const { street, city, state, zip, country } = config.address;
     lines.push(`ADR:;;${escapeVCardText(street || '')};${escapeVCardText(city || '')};${escapeVCardText(state || '')};${escapeVCardText(zip || '')};${escapeVCardText(country || '')}`);
