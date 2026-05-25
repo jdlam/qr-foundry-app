@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useLayoutEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { toast } from 'sonner';
 import { useAuth } from '../../hooks/useAuth';
@@ -21,6 +21,16 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     setPassword('');
     setError('');
   };
+
+  // Reset form when the modal opens so re-opens always start blank.
+  // useLayoutEffect (not useEffect) so the reset runs synchronously before the
+  // browser paints, eliminating any one-frame flash of stale credentials on re-open.
+  // resetForm is intentionally NOT called on close — closing the modal (e.g.
+  // via a password-manager icon click triggering Radix's dismiss) must not
+  // wipe credentials the user has already typed. APP-F11.
+  useLayoutEffect(() => {
+    if (open) resetForm();
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +61,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={(isOpen) => { if (!isOpen) resetForm(); onOpenChange(isOpen); }}>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay
           className="fixed inset-0 z-50"
@@ -63,6 +73,13 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
             background: 'var(--panel-bg)',
             border: '1px solid var(--border)',
           }}
+          // APP-F11: password managers (1Password/Bitwarden) and browser autofill
+          // inject their icon + dropdown OUTSIDE the Radix portal, so clicking them
+          // registers as an outside interaction/focus that would dismiss the modal
+          // and wipe typed credentials. Block outside-driven dismissal entirely;
+          // Escape (onEscapeKeyDown) and the explicit close button still close it.
+          onInteractOutside={(e) => e.preventDefault()}
+          onFocusOutside={(e) => e.preventDefault()}
         >
           <Dialog.Title
             className="text-base font-semibold mb-4"
