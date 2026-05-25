@@ -28,7 +28,6 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   // wipe credentials the user has already typed. APP-F11.
   useEffect(() => {
     if (open) resetForm();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
