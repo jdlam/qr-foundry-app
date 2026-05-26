@@ -54,6 +54,10 @@ vi.mock('@platform', () => ({
     identify: vi.fn(),
     track: vi.fn(),
     reset: vi.fn(),
+    // prompted: true so dialogs don't auto-open in unrelated component tests
+    getConsent: vi.fn(() => Promise.resolve({ enabled: false, prompted: true })),
+    setConsentEnabled: vi.fn(() => Promise.resolve()),
+    markConsentPrompted: vi.fn(() => Promise.resolve()),
   },
   openExternalAdapter: {
     open: vi.fn(() => Promise.resolve()),
