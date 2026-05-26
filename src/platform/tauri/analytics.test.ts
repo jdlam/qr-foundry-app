@@ -461,6 +461,59 @@ describe('Tauri analytics adapter', () => {
     });
   });
 
+  describe('init() resilience — store rejection degrades gracefully', () => {
+    // Restore the default mockGet implementation after each test in this group.
+    // mockGet.mockClear() (called in setupStore) only clears call history — it does NOT
+    // restore the implementation. mockImplementation() changes below must be explicitly
+    // reset so they don't bleed into subsequent tests in the suite.
+    afterEach(() => {
+      mockGet.mockImplementation(async (key: string) => storeData[key] ?? undefined);
+    });
+
+    it('ready resolves (not rejects) when loadPrefs throws', async () => {
+      // WHY: if ready rejects, every void ready.then(...) in track/identify/reset
+      // becomes an unhandled rejection and silently never runs. The adapter must
+      // always hand callers a resolved promise so they can safely no-op.
+      setupStore();
+      mockGet.mockImplementation(async () => { throw new Error('store permission denied'); });
+
+      adapter.init();
+
+      // Must resolve, not reject
+      await expect(analyticsReady).resolves.toBeUndefined();
+    });
+
+    it('enabled is false after loadPrefs throws, so track() no-ops without throwing', async () => {
+      // WHY: degrading to disabled on store failure means no events leak out and
+      // no unhandled rejections surface to the user.
+      setupStore();
+      mockGet.mockImplementation(async () => { throw new Error('store IO error'); });
+
+      adapter.init();
+      await analyticsReady;
+
+      // track() should silently no-op
+      adapter.track('should_be_blocked_after_store_failure');
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('identify() no-ops without throwing when loadPrefs threw during init', async () => {
+      setupStore();
+      mockGet.mockImplementation(async () => { throw new Error('store error'); });
+
+      adapter.init();
+      await analyticsReady;
+
+      // Should not throw and should not send
+      adapter.identify('user-xyz');
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
   describe('setTelemetryEnabledRuntime', () => {
     it('immediately stops sending when flipped to false', async () => {
       setupStore({

@@ -127,4 +127,63 @@ describe('TelemetryConsentDialog', () => {
       expect(analyticsAdapter.setConsentEnabled).not.toHaveBeenCalled();
     });
   });
+
+  describe('store failure resilience', () => {
+    it('does not render the dialog when getConsent rejects', async () => {
+      // WHY: blocking the UI on a telemetry prompt when the store is broken is worse
+      // than silently skipping — we re-prompt next launch once the store is healthy.
+      vi.mocked(analyticsAdapter.getConsent).mockRejectedValueOnce(
+        new Error('store read failed')
+      );
+      const { container } = render(<TelemetryConsentDialog />);
+
+      // Wait for promise to settle
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(container.firstChild).toBeNull();
+    });
+
+    it('closes the dialog even when the Enable write handler rejects', async () => {
+      // WHY: a failed store write just means we re-prompt next launch (safe fallback).
+      // The dialog must not get stuck open — that would block the user permanently.
+      // Using an async implementation (not Promise.reject) so the rejection is attached
+      // to an awaited promise, not a free-floating one that Vitest flags as unhandled.
+      mockGetConsent({ enabled: false, prompted: false });
+      vi.mocked(analyticsAdapter.setConsentEnabled).mockImplementationOnce(
+        async () => { throw new Error('store write failed'); }
+      );
+
+      render(<TelemetryConsentDialog />);
+      await waitFor(() => screen.getByRole('dialog'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /enable/i }));
+        await new Promise((r) => setTimeout(r, 0));
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+    });
+
+    it('closes the dialog even when the Decline write handler rejects', async () => {
+      // Same rationale: a write failure must not leave the dialog stuck open.
+      mockGetConsent({ enabled: false, prompted: false });
+      vi.mocked(analyticsAdapter.markConsentPrompted).mockImplementationOnce(
+        async () => { throw new Error('store write failed'); }
+      );
+
+      render(<TelemetryConsentDialog />);
+      await waitFor(() => screen.getByRole('dialog'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /no thanks/i }));
+        await new Promise((r) => setTimeout(r, 0));
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+    });
+  });
 });

@@ -56,6 +56,10 @@ export function SettingsView() {
     let cancelled = false;
     analyticsAdapter.getConsent().then((consent) => {
       if (!cancelled) setEnabled(consent.enabled);
+    }).catch(() => {
+      // Fail safe: if the store can't be read, treat telemetry as off rather
+      // than blocking the Settings view indefinitely on a null state.
+      if (!cancelled) setEnabled(false);
     });
     return () => {
       cancelled = true;
@@ -63,8 +67,18 @@ export function SettingsView() {
   }, []);
 
   const handleToggle = async (value: boolean) => {
-    setEnabled(value); // optimistic — the store write is fire-and-forget
-    await analyticsAdapter.setConsentEnabled(value);
+    // Optimistic update: show the new state immediately for snappy UX.
+    // WHY we capture prev and revert: the consent toggle controls a privacy
+    // setting — if the store write fails, the displayed state MUST match what's
+    // actually on disk. Showing "off" while telemetry is still on (or vice versa)
+    // would be a privacy regression, so we revert rather than leaving a lie in the UI.
+    const prev = enabled;
+    setEnabled(value);
+    try {
+      await analyticsAdapter.setConsentEnabled(value);
+    } catch {
+      setEnabled(prev);
+    }
   };
 
   return (

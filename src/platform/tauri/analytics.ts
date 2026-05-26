@@ -116,18 +116,32 @@ export const analyticsAdapter: AnalyticsAdapter = {
     initialized = true;
 
     ready = (async () => {
-      const prefs = await loadPrefs();
-      installId = prefs.installId;
-      activeDistinctId = prefs.installId;
-      enabled = prefs.telemetryEnabled;
-      aliased = prefs.aliased;
+      // WHY try/catch: loadPrefs() calls into @tauri-apps/plugin-store which can
+      // reject (missing capability grant, IO error, corrupted file). If the IIFE
+      // throws, `ready` becomes a rejected promise and every subsequent
+      // `void ready.then(...)` in identify/track/reset becomes an unhandled
+      // rejection and silently never runs. Catching here ensures `ready` always
+      // resolves; we degrade to telemetry-disabled rather than leaving the app
+      // with a permanently broken analytics state.
+      try {
+        const prefs = await loadPrefs();
+        installId = prefs.installId;
+        activeDistinctId = prefs.installId;
+        enabled = prefs.telemetryEnabled;
+        aliased = prefs.aliased;
 
-      if (!enabled) return;
+        if (!enabled) return;
 
-      const today = todayUtc();
-      if (prefs.lastActiveDate !== today) {
-        await setLastActiveDate(today);
-        await sendCapture(activeDistinctId, 'app_active');
+        const today = todayUtc();
+        if (prefs.lastActiveDate !== today) {
+          await setLastActiveDate(today);
+          await sendCapture(activeDistinctId, 'app_active');
+        }
+      } catch (err) {
+        // Store op failed — degrade to disabled so callers always get a resolved
+        // promise and telemetry no-ops rather than producing unhandled rejections.
+        enabled = false;
+        console.error('[analytics] init failed, telemetry disabled:', err);
       }
     })();
   },

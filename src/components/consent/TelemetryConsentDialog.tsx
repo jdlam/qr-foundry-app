@@ -19,6 +19,11 @@ export function TelemetryConsentDialog() {
     let cancelled = false;
     analyticsAdapter.getConsent().then(({ prompted }) => {
       if (!cancelled) setOpen(!prompted);
+    }).catch(() => {
+      // Fail safe: if prefs can't be read, don't show the dialog. Blocking the
+      // UI on a telemetry prompt when the store is broken is worse than silently
+      // skipping the prompt (we re-prompt next launch once the store is healthy).
+      if (!cancelled) setOpen(false);
     });
     return () => { cancelled = true; };
   }, []);
@@ -27,13 +32,29 @@ export function TelemetryConsentDialog() {
   if (open !== true) return null;
 
   const handleEnable = async () => {
-    await analyticsAdapter.setConsentEnabled(true);
-    await analyticsAdapter.markConsentPrompted();
+    // WHY try/catch: persisting the choice before closing is the correct order
+    // for a consent dialog — we don't want to close and leave an unpersisted state.
+    // But a failed store write must not leave the dialog stuck open; a failure just
+    // means we re-prompt next launch, which is the safe fallback.
+    // The catch swallows the error (rather than re-throwing) so this async function
+    // always resolves — a rejected Promise returned to React's event system would be
+    // discarded as an unhandled rejection since React does not await event handlers.
+    try {
+      await analyticsAdapter.setConsentEnabled(true);
+      await analyticsAdapter.markConsentPrompted();
+    } catch {
+      // store write failed — re-prompt on next launch (safe fallback)
+    }
     setOpen(false);
   };
 
   const handleDecline = async () => {
-    await analyticsAdapter.markConsentPrompted();
+    // Same rationale as handleEnable: persist first, always close, swallow store errors.
+    try {
+      await analyticsAdapter.markConsentPrompted();
+    } catch {
+      // store write failed — re-prompt on next launch (safe fallback)
+    }
     setOpen(false);
   };
 
