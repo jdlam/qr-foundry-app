@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-28
+
+### Added
+
+- **In-app upgrade flow** (#64) — Logged-in free users hitting the dynamic-codes paywall now see an upgrade modal (monthly/annual toggle, "Start 14-day free trial") that opens Stripe Checkout. Web navigates the current tab (same-origin `?upgrade=success` return refetches `/api/me/plan`); desktop hands off to the system browser via `@tauri-apps/plugin-opener` and refetches on focus (throttled, bounded to a 15-min window). New `checkout_started` event; existing `paywall_hit` retained. Replaces the prior dead-end "Subscribe to unlock" toast.
+- **Opt-in anonymous desktop telemetry** (#67) — Implements ADR-0002. Off by default. First-run consent dialog + Settings toggle. Anonymous install UUID (no fingerprinting, no QR content ever sent), explicit `/capture/` transport (no posthog-js/autocapture), events tagged `platform:"desktop"` with `$ip:"0"` + `$geoip_disable:true`. Alias-once-per-install guard prevents permanent person-merging on shared devices. All existing shared `track()` call sites light up automatically once enabled; net-new event is `app_active`. Privacy policy disclosing this lives at [qr-foundry.com/legal](https://qr-foundry.com/legal) (site #33). Web build behavior is unchanged.
+
+### Fixed
+
+- **Auth modal no longer dismisses when clicking a password-manager icon (APP-F11)** (#66) — Radix `Dialog`'s outside-interaction auto-dismiss was firing on 1Password / Bitwarden / Dashlane / browser-autofill icons rendered outside the portal, wiping typed credentials and blocking signup/login (the entrance to the entire paid funnel). `onInteractOutside` + `onFocusOutside` now `preventDefault`; Escape and the explicit X button still close. As defense-in-depth, `resetForm()` moved out of the close path into a mount-time `useEffect` so a transient dismiss can't wipe input.
+- **vCard fields are now escaped per RFC 2426 (APP-F1)** (#65) — `formatVCard` interpolated raw, so commas/semicolons/backslashes/newlines in `ORG`/`N`/`FN`/`TITLE`/`ADR` could split fields or be rejected by strict iOS/Android parsers — silent contact corruption on one of 11 advertised QR types. New `escapeVCardText` backslash-escapes structural delimiters + newlines on every TEXT property; CRLF line termination per the RFC. Typed values (`TEL`/`EMAIL`/`URL`) intentionally unchanged.
+
 ## [0.4.1] - 2026-05-23
 
 ### Added — Product analytics (web only)
